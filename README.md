@@ -1,237 +1,101 @@
 # 🎓 EduVerse AI – Your Personal AI Teacher
 
-> **AI Innovation Hackathon 2026 – Round 2 Technical Assessment**  
-> **Challenge**: *"AI Teacher: Build a Human-Like AI Educator That Teaches Through Video"*  
-> **Target Audience**: Students, Self-Learners, and Educators worldwide.
+> **AI Innovation Hackathon 2026 – Round 2 Project**  
+> *"AI Teacher: Build a Human-Like AI Educator That Teaches Through Video"*
 
 ---
 
-## 🌟 1. Project Description
+## 🌟 What is EduVerse AI?
 
-### 💡 Elevator Pitch
-**EduVerse AI** is an adaptive, multimodal AI educator that transforms static learning materials and topics into interactive video lessons featuring a human-like teacher avatar, real-time cognitive misconception detection, dynamic subject whiteboards, and grounded RAG synthesis.
+**EduVerse AI** is an interactive, adaptive web application that acts like a real human teacher instead of a generic chatbot.
 
-### 🛑 The Problem
-Traditional online education offers passive, one-way recorded video lectures or generic text chatbots that lack pedagogical structure. When a student misunderstands a foundational concept, standard chatbots simply say *"Wrong answer"* or recite textbook definitions without diagnosing the cognitive breakdown or adapting their teaching approach.
+It follows the complete pedagogical teaching cycle:  
+**Understand → Plan → Explain → Demonstrate → Question → Evaluate → Adapt → Continue**
 
-### ✅ The Solution: EduVerse AI
-EduVerse AI bridges the gap between artificial intelligence and human pedagogy. Rather than acting as a static chatbot, it behaves like an authentic personalized educator by executing the complete human teaching cycle:
-
-$$\text{UNDERSTAND} \longrightarrow \text{PLAN} \longrightarrow \text{EXPLAIN} \longrightarrow \text{DEMONSTRATE} \longrightarrow \text{QUESTION} \longrightarrow \text{EVALUATE} \longrightarrow \text{ADAPT} \longrightarrow \text{CONTINUE}$$
-
-Powered by **ARIA**—an interactive cognitive AI tutor—the platform delivers voice-synchronized lessons, subject-aware interactive whiteboards (like live animated physics circuits), and a deep misconception diagnosis engine that immediately identifies *why* a student answered incorrectly and deploys intuitive real-world analogies (e.g., the water-pipe model for Ohm's Law) to fix broken mental models in real time.
+Powered by **ARIA** (our AI Teacher Avatar), EduVerse AI delivers voice-synchronized lessons, interactive circuit/math whiteboards, automatic misconception diagnosis (using real-world analogies like water pipes for Ohm's Law), and personalized learning paths.
 
 ---
 
-## 🥊 2. Key Differentiator: AI Teacher vs. AI Chatbot
+## ✨ Key Features
 
-| Feature | Traditional AI Chatbot | **EduVerse AI (Personal AI Teacher)** |
+* **👩‍🏫 AI Teacher Classroom (`/teacher`)**: Realistic animated avatar (ARIA) with natural speech, live audio visualizer, subtitles, and classroom controls (`Ask Question`, `Repeat`, `Explain Simpler`, `Speak to ARIA`).
+* **⚡ Interactive Visual Whiteboard**: Dynamic, subject-aware whiteboards (e.g., animated circuit with moving electrons, formula $V = IR$, battery, and resistor).
+* **🧠 Cognitive Misconception Detection**: When a student makes a mistake, the AI diagnoses *why* they erred and explains it using intuitive physical analogies before re-testing.
+* **⏱️ Time-Adaptive Lesson Planner**: Generates structured lessons tailored to available time (**5 mins**, **20 mins**, **60 mins**, or **7-day** study paths).
+* **📄 Document RAG Pipeline**: Upload your own **PDF, DOCX, PPTX, or TXT** files to generate grounded, course-specific lessons.
+* **🌐 Multilingual Support**: Learn in **12 languages** (English, Hindi, Hinglish, Spanish, French, Tamil, Telugu, etc.) with preserved lesson progress.
+* **🌓 Light & Dark Mode**: Seamlessly switch between dark classroom mode and crisp light mode via Navbar or Settings.
+
+---
+
+## 🥊 Why EduVerse AI is Different
+
+| Feature | Standard AI Chatbot | **EduVerse AI** |
 | :--- | :--- | :--- |
-| **Interface** | Passive text prompt & text response | **Multimodal video avatar + speech + animated whiteboard** |
-| **Pedagogy** | Single response monologue | **Structured Teaching Loop: Explain $\rightarrow$ Question $\rightarrow$ Evaluate $\rightarrow$ Adapt** |
-| **Incorrect Answers** | Simply says *"Wrong, the answer is B"* | **Diagnoses root misconception & deploys physical analogies** |
-| **Visuals** | Plain text / markdown | **Interactive animated circuit schematics, formulas & charts** |
-| **Pacing** | None / Unstructured | **Time-aware structured curriculum plans (5m, 20m, 60m, 7d)** |
-| **Course Materials** | No grounding / Hallucinations | **Production RAG pipeline across PDF, DOCX, PPTX, and TXT** |
-| **Multilingual** | Resets context on language change | **Preserves lesson state & concept mastery across 12 languages** |
+| **Format** | Plain text Q&A | **Multimodal video avatar + speech + whiteboard** |
+| **Pedagogy** | Single answer monologue | **Interactive loop (Explain → Question → Adapt)** |
+| **Wrong Answers** | Just says "Incorrect" | **Diagnoses misconception & gives relatable analogies** |
+| **Visuals** | None | **Live animated circuit schematics and formulas** |
+| **Curriculum** | Unstructured | **Time-aware structured lesson plans (5m to 7d)** |
 
 ---
 
-## 🏗️ 3. System Architecture
+## 💻 Tech Stack
 
-```mermaid
-graph TD
-    Client[React 18 + Vite + Tailwind CSS + Lucide + Recharts] -->|REST APIs + Web Speech| Backend[Express.js Node Backend]
-    
-    subgraph Backend Core Services
-        Auth[JWT Authentication & User Profiles]
-        RAG[RAG Pipeline: PDF/DOCX/PPTX Extract, Semantic Chunk, Vector Embed, Retrieve]
-        Planner[AI Lesson Planner: 5m, 20m, 60m, 7-day]
-        Teacher[Adaptive Teacher State Machine & Pacing]
-        Misconception[Cognitive Misconception Diagnosis Engine]
-        Visuals[Subject-Aware Visual Planner: Circuits, Formulas, Graphs]
-        TTSAvatar[Web Speech Audio & Avatar Synchronization]
-    end
-
-    Backend --> Auth
-    Backend --> RAG
-    Backend --> Planner
-    Backend --> Teacher
-    Backend --> Misconception
-    Backend --> Visuals
-    Backend --> TTSAvatar
-
-    Backend -->|Mongoose or Zero-Config In-Memory Engine| DB[(MongoDB / Dual Storage Engine)]
-    Backend -->|Configurable LLM / Gemini / OpenAI / Demo| AI[AI Service Abstraction Layer]
-```
+* **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons, Recharts
+* **Backend**: Node.js, Express.js, Multer, pdf-parse, mammoth
+* **AI & Voice**: Configurable LLM API layer (Google Gemini / OpenAI / Built-in fallback) + Web Speech API (TTS & Speech Recognition)
+* **Database**: MongoDB with automatic Zero-Config In-Memory fallback
 
 ---
 
-## ✨ 4. Key Highlights & Features
+## 🚀 Quick Start Guide
 
-### 👩‍🏫 A. AI Teacher Classroom (`/teacher`)
-* **Split-Screen Studio**: Interactive SVG/Recharts subject whiteboard on top, lifelike ARIA animated avatar on bottom.
-* **Live Classroom Controls**: `? Ask question`, `↺ Repeat`, `💡 Explain simpler`, and `🎤 Speak to ARIA` (Web Speech API STT/TTS).
-* **Real-time Audio Visualizer**: Live waveform visualizer with synchronized closed captions.
-* **Lesson Assistant Panel**: Check-your-understanding interactive questions with instant pedagogical feedback.
-
-### 🧠 B. Pedagogical Misconception Diagnosis Engine (`/backend/ai/misconceptionDetector.js`)
-* If a student answers incorrectly (e.g., selecting *"Current increases"* when resistance increases):
-  1. Diagnoses the exact root cause: *"Student reversed the inverse relationship between current and resistance (I ~ 1/R)"*.
-  2. Deploys the **Water-Pipe Analogy**:
-     * **Voltage ($V$)** = Water Pump Pressure pushing water forward.
-     * **Resistance ($R$)** = Squeezing/narrowing the pipe.
-     * **Current ($I$)** = Water flow rate per second.
-     * *Conclusion*: Squeezing the pipe tighter ($R$ increases) means **LESS** water flows ($I$ decreases)!
-  3. Presents a remedial question (e.g., narrow vs. wide milkshake straw) to solidify the mental model.
-  4. Increases student concept mastery upon resolution.
-
-### ⏱️ C. Time-Aware AI Lesson Planner (`/create-lesson`)
-* **5 Minutes**: Rapid essential definitions and core formula summaries.
-* **20 Minutes**: Balanced interactive lesson with diagrams, analogies, and checkpoints.
-* **60 Minutes**: Deep conceptual breakdown, real-world case studies, multi-step problem solving, and end assessment.
-* **7 Days**: Multi-module structured learning path.
-
-### 📄 D. Production Document RAG Pipeline (`/materials`)
-* Supports **PDF, DOC, DOCX, PPT, PPTX, TXT**.
-* Automatic text extraction, section-aware chunking, vector embedding, and cosine similarity retrieval for grounded, hallucination-free teaching.
-
-### 🌐 E. Multilingual Teaching with Context Preservation
-* Supports **English, Hindi, Hinglish, Bengali, Tamil, Telugu, Marathi, Gujarati, Spanish, French**.
-* Switch languages on-the-fly mid-session without losing lesson progress or mastery state.
-
-### 🌓 F. Complete Light & Dark Mode
-* Dedicated **Theme Switcher** in Settings (`/settings`), top **Navbar Sun/Moon toggle**, and bottom **Sidebar toggle**.
-* High-contrast dark classroom mode and crisp clean light study mode.
-
----
-
-## 💻 5. Tech Stack
-
-| Layer | Technologies Used |
-| :--- | :--- |
-| **Frontend** | React 18, Vite, Tailwind CSS, Lucide React, Recharts, Axios, HTML5 Web Speech API |
-| **Backend** | Node.js, Express.js, Multer, pdf-parse, mammoth, jsonwebtoken, bcryptjs |
-| **AI / LLM** | Modular AI Abstraction (`AI_API_KEY` for Google Gemini / OpenAI / Anthropic / Local Fallback) |
-| **RAG Pipeline** | Semantic chunker, Cosine Similarity vector store, grounded prompt builder |
-| **Database** | MongoDB with Mongoose + Dual-Mode Zero-Config In-Memory Fallback |
-
----
-
-## 📁 6. Project Structure
-
-```
-eduverse-ai/
-├── backend/
-│   ├── ai/
-│   │   ├── adaptiveTeacher.js          # Pacing, difficulty scaling & style switching
-│   │   ├── lessonPlanner.js            # Time-aware curriculum generator
-│   │   ├── misconceptionDetector.js    # Cognitive error diagnosis & water-pipe analogy
-│   │   └── visualPlanner.js            # Subject visual layout generator
-│   ├── controllers/                    # Auth, Material, Lesson, Assessment, Progress, Notes
-│   ├── middleware/                     # JWT Auth, Multer upload, Global error handler
-│   ├── models/                         # User, Profile, Material, Lesson, Session, Misconception
-│   ├── rag/                            # ExtractText, ChunkText, Embeddings, VectorStore, RAG Pipeline
-│   ├── routes/                         # REST API endpoints mounted on /api/*
-│   ├── services/                       # aiService.js, avatarService.js, ttsService.js
-│   ├── utils/                          # Dual-mode db.js, jwt.js, demoData.js
-│   ├── uploads/                        # Document upload directory
-│   ├── server.js                       # Express application server
-│   └── package.json
-├── frontend/
-│   ├── src/
-│   │   ├── components/                 # Sidebar, Navbar, TeacherAvatar, VisualCanvas, QuestionCard...
-│   │   ├── context/                    # AuthContext, ThemeContext
-│   │   ├── layouts/                    # MainLayout with responsive navigation
-│   │   ├── pages/                      # Landing, Dashboard, CreateLesson, LessonPlan, TeacherClassroom,
-│   │   │                               # Assessment, LearningReport, LearningPath, Revision, Notes, Settings, Profile
-│   │   ├── services/                   # Axios API service instance with JWT interceptors
-│   │   ├── App.jsx                     # Complete React Router setup
-│   │   ├── main.jsx
-│   │   └── index.css                   # Tailwind directives and custom scrollbars
-│   ├── package.json
-│   ├── tailwind.config.js
-│   ├── postcss.config.js
-│   └── vite.config.js
-├── .gitignore
-└── README.md
-```
-
----
-
-## 🚀 7. Quick Start Guide
-
-### Prerequisites
-* **Node.js**: v18+ (Tested on v24)
-* **npm**: v9+
-
-### 1. Backend Setup
+### 1. Start Backend
 ```bash
 cd backend
 npm install
 npm start
 ```
-* Backend runs on **`http://localhost:5000`**
-* Health check: **`http://localhost:5000/api/health`**
+> Runs at `http://localhost:5000` (Health Check: `http://localhost:5000/api/health`)
 
-### 2. Frontend Setup
+### 2. Start Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-* Frontend runs on **`http://localhost:5173`**
+> Open `http://localhost:5173` in your browser!
 
 ---
 
-## ⚙️ 8. Environment Variables Configuration
+## 🏆 Quick Demo Flow
 
-### `backend/.env` (Optional – works 100% out of the box in Demo Mode)
+1. **Dashboard (`/dashboard`)**: View student stats (12-day streak, 24.5h learned).
+2. **Create Lesson (`/create-lesson`)**: Choose **Topic Mode** ("Electricity & Ohm's Law"), select **Beginner**, **20 mins**, and click **Generate Lesson**.
+3. **Lesson Plan (`/lesson-plan`)**: Review the AI-generated curriculum and click **Start AI Teacher**.
+4. **AI Classroom (`/teacher`)**:
+   * Watch ARIA explain the concept with the animated circuit whiteboard.
+   * In the **Lesson Assistant**, select **Option A** (*"It increases proportionally"*).
+   * Submit to see ARIA detect the misconception and deploy the **Water-Pipe Analogy**.
+   * Answer the follow-up question to boost mastery!
+5. **Report & Path (`/report`)**: View the 82% score report, weak areas, and the adaptive **Learning Path (`/learning-path`)**.
+
+---
+
+## ⚙️ Environment Variables (Optional)
+
+Create `.env` in `backend/` if you want to connect external APIs:
+
 ```env
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/eduverse
-JWT_SECRET=eduverse_secret_key_hackathon_2026
-AI_API_KEY=your_gemini_or_openai_api_key
-AI_MODEL=gemini-1.5-flash
-TTS_API_KEY=your_tts_api_key
-AVATAR_API_KEY=your_avatar_api_key
+JWT_SECRET=eduverse_secret_key_2026
+AI_API_KEY=your_gemini_or_openai_key
 DEMO_MODE=true
 ```
 
-### `frontend/.env`
-```env
-VITE_API_URL=http://localhost:5000/api
-```
-
 ---
 
-## 🏆 9. Hackathon Demo Flow (Step-by-Step)
-
-1. **Dashboard**: Open `http://localhost:5173/dashboard` to view Pranjal's learning streak (12 Days), hours learned (24.5h), and 7-day activity chart.
-2. **Create Lesson**: Click **Start AI Lesson** or navigate to `/create-lesson`.
-3. **Configure**: Select **Topic Mode**, enter `"Teach me Newton's Laws & Electricity"`, choose **Beginner**, **Hindi/English**, **20 mins**, and click **Generate Lesson**.
-4. **Lesson Plan**: Review the AI-generated structured curriculum, then click **Start AI Teacher**.
-5. **Classroom Interaction (`/teacher`)**:
-   * Observe the interactive Ohm's Law circuit whiteboard with moving electron particles and formulas ($V = IR$).
-   * Listen to ARIA's voice explanation and view the subtitle stream.
-6. **Trigger Misconception Engine**:
-   * In the **Lesson Assistant**, intentionally select **Option A** (*"It increases proportionally"*).
-   * Click **Submit Answer**.
-   * Watch ARIA intercept the error: *"Cognitive Misconception Detected: Student reversed the inverse relationship between current and resistance"*.
-   * ARIA deploys the **Water-Pipe Analogy** and presents the remedial milkshake question.
-7. **Resolution**: Solve the follow-up question to increase mastery, then proceed to the **Assessment (`/assessment`)**.
-8. **Learning Report (`/report`)**: View the 82% score donut, concept mastery bars, Resistance weak area, and targeted revision recommendations.
-9. **Learning Path & Notes**: Explore the interactive node curriculum (`/learning-path`) and formula cheat sheets (`/notes`).
-
----
-
-## 🛡️ 10. Third-Party APIs and Models Disclosed
-* **LLM Models**: Google Gemini Flash / Pro (`gemini-1.5-flash`), OpenAI GPT-4o-mini (Configurable via `aiService.js`).
-* **Speech Synthesis**: Web Speech API (`SpeechSynthesis`) / ElevenLabs Neural TTS abstraction.
-* **Speech Recognition**: Web Speech API (`SpeechRecognition`).
-* **Icons & Visuals**: Lucide React, Recharts Data Visualization.
-
----
-
-## 📄 11. License
-This project is developed for the **AI Innovation Hackathon 2026**. All rights reserved.
+## 📄 License
+Created for **AI Innovation Hackathon 2026**. All rights reserved.
