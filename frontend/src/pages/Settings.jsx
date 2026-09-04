@@ -1,9 +1,18 @@
 import React from 'react';
-import { Moon, Sun, Monitor, CheckCircle2, Sparkles, Volume2, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Moon, Sun, Monitor, CheckCircle2, Sparkles, Volume2, ShieldCheck, LogOut, User } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const Settings = () => {
   const { isDark, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
@@ -124,6 +133,31 @@ const Settings = () => {
             </div>
           </div>
           <span className="text-blue-600 font-bold bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">Enabled</span>
+        </div>
+      </div>
+
+      {/* Account Session Controls */}
+      <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-rose-200/60 dark:border-rose-950 shadow-sm space-y-4 text-xs">
+        <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider text-[11px] text-slate-400">
+          Account & Session
+        </h3>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+              <User className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white text-xs">{user?.name || "Pranjal"}</p>
+              <p className="text-slate-400 text-[11px]">Signed in as {user?.email || "pranjal@eduverse.ai"}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Log Out of EduVerse</span>
+          </button>
         </div>
       </div>
     </div>

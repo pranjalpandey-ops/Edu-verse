@@ -13,15 +13,21 @@ import {
   Settings, 
   Moon, 
   Sun,
-  Flame
+  Flame,
+  LogOut
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
   const { isDark, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const navItems = [
     { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -104,11 +110,12 @@ const Sidebar = () => {
             <span>Theme</span>
           </button>
           <button 
-            onClick={() => window.open('https://github.com', '_blank')}
-            className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+            onClick={handleLogout}
+            className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 font-medium transition-colors"
+            title="Log out of account"
           >
-            <HelpCircle className="w-4 h-4" />
-            <span>Help</span>
+            <LogOut className="w-4 h-4" />
+            <span>Log Out</span>
           </button>
         </div>
       </div>
