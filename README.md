@@ -1,7 +1,5 @@
 # 🎓 EduVerse AI – Your Personal AI Teacher
 
-> **AI Innovation Hackathon 2026 – Round 2 Project**  
-> *"AI Teacher: Build a Human-Like AI Educator That Teaches Through Video"*
 
 ---
 
@@ -49,25 +47,6 @@ Powered by **ARIA** (our AI Teacher Avatar), EduVerse AI delivers voice-synchron
 
 ---
 
-## 🚀 Quick Start Guide
-
-### 1. Start Backend
-```bash
-cd backend
-npm install
-npm start
-```
-> Runs at `http://localhost:5000` (Health Check: `http://localhost:5000/api/health`)
-
-### 2. Start Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-> Open `http://localhost:5173` in your browser!
-
----
 
 ## 🏆 Quick Demo Flow
 
@@ -82,20 +61,3 @@ npm run dev
 5. **Report & Path (`/report`)**: View the 82% score report, weak areas, and the adaptive **Learning Path (`/learning-path`)**.
 
 ---
-
-## ⚙️ Environment Variables (Optional)
-
-Create `.env` in `backend/` if you want to connect external APIs:
-
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/eduverse
-JWT_SECRET=eduverse_secret_key_2026
-AI_API_KEY=your_gemini_or_openai_key
-DEMO_MODE=true
-```
-
----
-
-## 📄 License
-Created for **AI Innovation Hackathon 2026**. All rights reserved.
