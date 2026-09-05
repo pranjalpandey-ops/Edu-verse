@@ -1,8 +1,11 @@
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
+const rawBase = import.meta.env.VITE_API_URL || '';
+const BASE_URL = rawBase.replace(/\/+$/, '');
+
 const API = axios.create({
-  baseURL: '/api',
+  baseURL: BASE_URL ? `${BASE_URL}/api` : '/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -20,7 +23,8 @@ API.interceptors.request.use((config) => {
 let socketInstance = null;
 export const getSocket = () => {
   if (!socketInstance) {
-    socketInstance = io(window.location.origin, {
+    const socketOrigin = BASE_URL || window.location.origin;
+    socketInstance = io(socketOrigin, {
       transports: ['websocket', 'polling']
     });
   }

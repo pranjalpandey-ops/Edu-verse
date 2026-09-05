@@ -75,11 +75,83 @@ exports.generateFlashcards = async (req, res, next) => {
   }
 };
 
+const SAMPLE_FLASHCARDS = [
+  {
+    subject: "Physics",
+    concept: "Wave Optics & Interference",
+    front: "Under what exact condition does destructive interference occur in Young's Double Slit Experiment?",
+    back: "When the path difference is an odd multiple of half-wavelength: Δx = (2n - 1) * (λ / 2), resulting in zero or minimum intensity.",
+    hints: ["Think about crest meeting trough (phase difference of π radians or 180°)."],
+    difficulty: "medium"
+  },
+  {
+    subject: "Mathematics",
+    concept: "Differential Calculus & Chain Rule",
+    front: "State the Chain Rule for composite function differentiation y = f(g(x)).",
+    back: "dy/dx = f'(g(x)) * g'(x) or dy/dx = (dy/du) * (du/dx) where u = g(x).",
+    hints: ["Differentiate the outer function with respect to the inner, then multiply by inner's derivative."],
+    difficulty: "easy"
+  },
+  {
+    subject: "Chemistry",
+    concept: "Electrochemistry & Nernst Equation",
+    front: "How does increasing the concentration of products impact cell potential (E_cell)?",
+    back: "It increases reaction quotient Q, which decreases cell potential E_cell because E_cell = E° - (0.0591/n) * log(Q).",
+    hints: ["Le Chatelier's principle and the negative log term in the Nernst equation."],
+    difficulty: "medium"
+  },
+  {
+    subject: "Biology",
+    concept: "Photosynthesis & Light Reactions",
+    front: "What is the primary function of the photolysis of water in Photosystem II (PSII)?",
+    back: "Water photolysis (2H2O -> 4H+ + 4e- + O2) replaces the excited electrons lost by P680 chlorophyll and generates the proton gradient for ATP synthesis.",
+    hints: ["Provides electrons to the electron transport chain and releases molecular oxygen."],
+    difficulty: "medium"
+  },
+  {
+    subject: "Computer Science",
+    concept: "Binary Search & Time Complexity",
+    front: "What is the worst-case time complexity of Binary Search on a sorted array of size N, and why?",
+    back: "O(log N), because the search space is halved after every comparison until 1 element remains.",
+    hints: ["Logarithm base 2: 2^k = N implies k = log2(N)."],
+    difficulty: "easy"
+  },
+  {
+    subject: "Physics",
+    concept: "Electromagnetic Induction & Lenz's Law",
+    front: "What physical conservation law is directly embodied by Lenz's Law in electromagnetic induction?",
+    back: "Conservation of Energy: the induced current always opposes the change in magnetic flux that creates it to prevent free work generation.",
+    hints: ["Think about why induced emf has a negative sign: ε = -dΦ/dt."],
+    difficulty: "medium"
+  }
+];
+
 exports.getFlashcards = async (req, res, next) => {
   try {
     const userId = req.user?.id || 'demo_user';
-    const cards = await Flashcard.find({ userId: userId.toString() });
-    res.json({ success: true, flashcards: cards });
+    let cards = await Flashcard.find({ userId: userId.toString() });
+    if (!cards || cards.length < 3) {
+      for (const sample of SAMPLE_FLASHCARDS) {
+        const card = await Flashcard.create({
+          userId: userId.toString(),
+          subject: sample.subject,
+          concept: sample.concept,
+          front: sample.front,
+          back: sample.back,
+          hints: sample.hints,
+          source: 'curriculum',
+          difficulty: sample.difficulty,
+          repetitions: 0,
+          interval: 1,
+          easeFactor: 2.5,
+          nextReviewAt: new Date().toISOString(),
+          lastReviewedAt: null
+        });
+        if (!cards) cards = [];
+        cards.push(card);
+      }
+    }
+    res.json({ success: true, count: cards.length, flashcards: cards });
   } catch (err) {
     next(err);
   }
