@@ -11,5 +11,7 @@ router.delete('/:id', protect, materialController.deleteMaterial);
 router.post('/:id/ask', protect, materialController.askMaterial);
 router.post('/:id/summarize', protect, materialController.summarizeMaterial);
 router.post('/:id/lesson', protect, materialController.generateLessonFromMaterial);
+router.post('/:id/flashcards', protect, materialController.generateFlashcardsFromMaterial);
+router.post('/:id/quiz', protect, materialController.generateQuizFromMaterial);
 
 module.exports = router;

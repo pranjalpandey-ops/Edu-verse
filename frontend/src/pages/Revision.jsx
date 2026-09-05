@@ -5,6 +5,7 @@ import {
   Layers, ArrowRight, RotateCcw, Award, CheckCircle2, ChevronRight,
   Flame, Zap, Compass, Atom, Cpu, RefreshCw, HelpCircle, Plus, Eye, EyeOff, Loader2, Shuffle, Dices
 } from 'lucide-react';
+import MathView from '../components/MathView';
 import { formulaAPI, revisionAPI, flashcardsAPI } from '../services/api';
 
 const GRADES = [
@@ -302,8 +303,8 @@ export default function Revision() {
                       </p>
 
                       {/* Formula Box */}
-                      <div className="p-3 rounded-2xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 font-mono text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto">
-                        {f.formula}
+                      <div className="p-3.5 rounded-2xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto min-h-[48px] flex items-center">
+                        <MathView math={f.formula} block={false} />
                       </div>
 
                       <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -592,8 +593,8 @@ export default function Revision() {
                               {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>
                           </div>
-                          <div className="px-3 py-2 rounded-xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 font-mono text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold">
-                            {f.formula}
+                          <div className="px-3.5 py-2.5 rounded-xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto min-h-[44px] flex items-center">
+                            <MathView math={f.formula} block={false} />
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400">{f.description}</p>
                         </div>

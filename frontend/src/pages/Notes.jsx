@@ -4,6 +4,7 @@ import {
   Layers, ArrowRight, Loader2, Filter, Zap, Play, CheckCircle2 
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import MathView from '../components/MathView';
 import API, { noteAPI } from '../services/api';
 
 const SUBJECT_ICONS = {
@@ -281,8 +282,8 @@ export default function Notes() {
                             {copiedId === `f_${i}` ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
                         </div>
-                        <div className="p-2.5 rounded-xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 font-mono text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto">
-                          {f.formula}
+                        <div className="p-3 rounded-xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto min-h-[44px] flex items-center">
+                          <MathView math={f.formula} block={false} />
                         </div>
                         {f.unit && (
                           <div className="text-[10px] text-slate-400">Unit: {f.unit}</div>

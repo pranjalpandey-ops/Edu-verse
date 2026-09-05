@@ -4,6 +4,7 @@ import {
   Search, Sparkles, BookOpen, Video, ArrowRight, Clock, Award, 
   HelpCircle, Compass, Zap, CheckCircle2, ChevronRight, Layers, Flame, Copy, Check
 } from 'lucide-react';
+import MathView from '../components/MathView';
 import { searchAPI } from '../services/api';
 
 const QUICK_TOPICS = [
@@ -255,8 +256,8 @@ export default function SearchLearn() {
                             {copiedFormula === `s_f_${idx}` ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
-                        <div className="font-mono text-xs text-blue-600 dark:text-cyan-300 bg-blue-50 dark:bg-black/30 p-1.5 rounded-lg">
-                          {f.formula}
+                        <div className="text-xs text-blue-600 dark:text-cyan-300 bg-blue-50 dark:bg-black/30 p-2 rounded-xl overflow-x-auto min-h-[38px] flex items-center">
+                          <MathView math={f.formula} block={false} />
                         </div>
                       </div>
                     ))}

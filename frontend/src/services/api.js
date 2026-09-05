@@ -173,7 +173,9 @@ export const materialAPI = {
   getById: (id) => API.get(`/materials/${id}`),
   ask: (id, data) => API.post(`/materials/${id}/ask`, data),
   summarize: (id) => API.post(`/materials/${id}/summarize`),
-  lesson: (id, data) => API.post(`/materials/${id}/lesson`, data)
+  lesson: (id, data) => API.post(`/materials/${id}/lesson`, data),
+  flashcards: (id) => API.post(`/materials/${id}/flashcards`),
+  quiz: (id) => API.post(`/materials/${id}/quiz`)
 };
 
 export default API;

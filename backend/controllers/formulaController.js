@@ -264,15 +264,22 @@ class FormulaController {
             chapters: [
               {
                 id: 'c11_m1',
-                title: 'Trigonometric Functions & Complex Numbers',
+                title: 'Trigonometric Functions, Identities & Complex Numbers',
                 formulas: [
-                  { name: 'Compound Angle Formula', formula: '\\sin(A \\pm B) = \\sin A \\cos B \\pm \\cos A \\sin B', description: 'Trig angle addition' },
-                  { name: 'Double Angle Formulas', formula: '\\cos 2\\theta = \\cos^2 \\theta - \\sin^2 \\theta = 2\\cos^2 \\theta - 1 = 1 - 2\\sin^2 \\theta', description: 'Cosine double angle' },
-                  { name: "Euler's Formula", formula: 'e^{i\\theta} = \\cos \\theta + i \\sin \\theta, \\quad z = r(\\cos \\theta + i \\sin \\theta)', description: 'Complex polar form' },
-                  { name: "De Moivre's Theorem", formula: '(\\cos \\theta + i \\sin \\theta)^n = \\cos(n\\theta) + i \\sin(n\\theta)', description: 'Complex exponential power' }
+                  { name: 'Compound Angle Addition', formula: '\\sin(A \\pm B) = \\sin A \\cos B \\pm \\cos A \\sin B', description: 'Trig angle addition formula' },
+                  { name: 'Cosine Compound Angle', formula: '\\cos(A \\pm B) = \\cos A \\cos B \\mp \\sin A \\sin B', description: 'Trig cosine addition formula' },
+                  { name: 'Tangent Compound Angle', formula: '\\tan(A \\pm B) = \\frac{\\tan A \\pm \\tan B}{1 \\mp \\tan A \\tan B}', description: 'Tangent addition formula' },
+                  { name: 'Double Angle Sine', formula: '\\sin 2\\theta = 2 \\sin \\theta \\cos \\theta = \\frac{2\\tan \\theta}{1 + \\tan^2 \\theta}', description: 'Sine double angle expansion' },
+                  { name: 'Double Angle Cosine', formula: '\\cos 2\\theta = \\cos^2 \\theta - \\sin^2 \\theta = 2\\cos^2 \\theta - 1 = 1 - 2\\sin^2 \\theta = \\frac{1 - \\tan^2 \\theta}{1 + \\tan^2 \\theta}', description: 'Cosine double angle identities' },
+                  { name: 'Triple Angle Formulas', formula: '\\sin 3\\theta = 3\\sin \\theta - 4\\sin^3 \\theta, \\quad \\cos 3\\theta = 4\\cos^3 \\theta - 3\\cos \\theta', description: 'Triple angle identities' },
+                  { name: 'Product to Sum Transformation', formula: '2\\sin A \\cos B = \\sin(A + B) + \\sin(A - B), \\quad 2\\cos A \\sin B = \\sin(A + B) - \\sin(A - B)', description: 'Product to sum formulas' },
+                  { name: 'Sum to Product Transformation', formula: '\\sin C + \\sin D = 2\\sin\\left(\\frac{C+D}{2}\\right)\\cos\\left(\\frac{C-D}{2}\\right)', description: 'Sum to product formula' },
+                  { name: 'Law of Sines & Cosines', formula: '\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C} = 2R, \\quad \\cos A = \\frac{b^2 + c^2 - a^2}{2bc}', description: 'Triangle trigonometry laws' },
+                  { name: "Euler's Formula & Polar Form", formula: 'e^{i\\theta} = \\cos \\theta + i \\sin \\theta, \\quad z = r e^{i\\theta}', description: 'Complex exponential form' },
+                  { name: "De Moivre's Theorem", formula: '(\\cos \\theta + i \\sin \\theta)^n = \\cos(n\\theta) + i \\sin(n\\theta)', description: 'Complex powers theorem' }
                 ],
-                keyConcepts: ['General Solutions of Trig Equations', 'Modulus and Argument of Complex Numbers', 'Quadratic Roots in C'],
-                lessonTopic: 'Class 11: Advanced Trigonometry and Complex Numbers'
+                keyConcepts: ['General Solutions of Trig Equations', 'Modulus and Argument of Complex Numbers', 'Triangle Inradius & Circumradius'],
+                lessonTopic: 'Class 11: Advanced Trigonometric Identities and Functions'
               },
               {
                 id: 'c11_m2',
@@ -355,15 +362,21 @@ class FormulaController {
             chapters: [
               {
                 id: 'c12_c1',
-                title: 'Electrochemistry & Chemical Kinetics',
+                title: 'Electrochemistry, Solutions & Chemical Kinetics',
                 formulas: [
-                  { name: 'Nernst Equation', formula: 'E_{cell} = E^\\circ_{cell} - \\frac{0.0591}{n} \\log_{10} Q', description: 'Cell potential under non-standard conditions at 298K' },
-                  { name: "Faraday's Law of Electrolysis", formula: 'm = Z I t = \\frac{M}{n F} I t', description: 'F = 96500 C/mol' },
+                  { name: 'Nernst Equation (298 K)', formula: 'E_{cell} = E^\\circ_{cell} - \\frac{0.0591}{n} \\log_{10} Q', description: 'Cell potential at 298 K under non-standard concentrations' },
+                  { name: 'Gibbs Free Energy & EMF', formula: '\\Delta G^\\circ = -n F E^\\circ_{cell} = -2.303 R T \\log_{10} K_{eq}', description: 'Equilibrium constant from cell potential' },
+                  { name: "Faraday's Law of Electrolysis", formula: 'm = Z I t = \\frac{M}{n F} I t', description: 'Mass of substance deposited at electrode (F = 96500 C/mol)' },
+                  { name: "Raoult's Law for Volatile Liquids", formula: 'P_{total} = P_A^\\circ x_A + P_B^\\circ x_B = P_A^\\circ + (P_B^\\circ - P_A^\\circ) x_B', description: 'Total vapor pressure of ideal solution' },
+                  { name: 'Elevation in Boiling Point', formula: '\\Delta T_b = i \\cdot K_b \\cdot m, \\quad m = \\frac{w_B \\times 1000}{M_B \\times w_A}', description: 'Molal elevation constant formula' },
+                  { name: 'Depression in Freezing Point', formula: '\\Delta T_f = i \\cdot K_f \\cdot m', description: 'Cryoscopic depression formula' },
+                  { name: 'Osmotic Pressure', formula: '\\pi = i \\cdot C R T = i \\cdot \\left(\\frac{n_B}{V}\\right) R T', description: 'Van t Hoff osmotic pressure formula' },
                   { name: 'First Order Rate Constant', formula: 'k = \\frac{2.303}{t} \\log_{10}\\left(\\frac{[A]_0}{[A]_t}\\right), \\quad t_{1/2} = \\frac{0.693}{k}', description: 'First order kinetics' },
-                  { name: 'Arrhenius Equation', formula: 'k = A e^{-E_a / (R T)}, \\quad \\log_{10}\\left(\\frac{k_2}{k_1}\\right) = \\frac{E_a}{2.303 R}\\left(\\frac{1}{T_1} - \\frac{1}{T_2}\\right)', description: 'Activation energy relation' }
+                  { name: 'Arrhenius Equation', formula: 'k = A e^{-E_a / (R T)}, \\quad \\log_{10}\\left(\\frac{k_2}{k_1}\\right) = \\frac{E_a}{2.303 R}\\left(\\frac{1}{T_1} - \\frac{1}{T_2}\\right)', description: 'Activation energy relation' },
+                  { name: 'Kohlrausch Law', formula: '\\Lambda^\\circ_m = \\nu_+ \\lambda^\\circ_+ + \\nu_- \\lambda^\\circ_-', description: 'Molar conductivity at infinite dilution' }
                 ],
-                keyConcepts: ['Kohlrausch Law', 'Colligative Properties (Raoult Law, Elevation in BP, Depression in FP)', 'SN1 vs SN2 Mechanisms'],
-                lessonTopic: 'Class 12: Electrochemistry and Reaction Kinetics'
+                keyConcepts: ['Van t Hoff Factor (i = 1 + (n-1)α)', 'SN1 vs SN2 Mechanisms', 'Markovnikov & Anti-Markovnikov Rule', 'Aldol Condensation & Cannizzaro'],
+                lessonTopic: 'Class 12: Electrochemistry, Solutions and Reaction Kinetics'
               }
             ]
           },
