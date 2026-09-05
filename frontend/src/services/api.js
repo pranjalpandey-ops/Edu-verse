@@ -94,6 +94,7 @@ export const studyPlanAPI = {
 export const formulaAPI = {
   getCurriculum: (params) => API.get('/formulas/curriculum', { params }),
   search: (query) => API.get(`/formulas/search?query=${encodeURIComponent(query)}`),
+  getRandom: (params) => API.get('/formulas/random', { params }),
   getGrades: () => API.get('/formulas/grades')
 };
 

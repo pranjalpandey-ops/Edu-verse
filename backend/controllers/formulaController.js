@@ -452,7 +452,7 @@ class FormulaController {
 
   async searchFormulas(req, res) {
     try {
-      const query = (req.query.q || '').toLowerCase().trim();
+      const query = (req.query.query || req.query.q || '').toLowerCase().trim();
       const results = [];
 
       for (const [gradeKey, gradeData] of Object.entries(this.curriculum)) {
@@ -490,6 +490,53 @@ class FormulaController {
       });
     } catch (error) {
       console.error('[FormulaController] searchFormulas error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getRandomFormulas(req, res) {
+    try {
+      const count = parseInt(req.query.count) || 6;
+      const subjectFilter = (req.query.subject || '').toLowerCase().trim();
+      const allFormulas = [];
+
+      for (const [gradeKey, gradeData] of Object.entries(this.curriculum)) {
+        for (const [subKey, subData] of Object.entries(gradeData.subjects)) {
+          if (subjectFilter && subjectFilter !== 'all' && subKey !== subjectFilter && !subData.name.toLowerCase().includes(subjectFilter)) {
+            continue;
+          }
+          for (const ch of subData.chapters) {
+            for (const f of ch.formulas) {
+              allFormulas.push({
+                grade: gradeData.grade,
+                gradeKey,
+                subject: subData.name,
+                subjectKey: subKey,
+                chapter: ch.title,
+                lessonTopic: ch.lessonTopic,
+                ...f
+              });
+            }
+          }
+        }
+      }
+
+      // Shuffle using Fisher-Yates
+      for (let i = allFormulas.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allFormulas[i], allFormulas[j]] = [allFormulas[j], allFormulas[i]];
+      }
+
+      const randomSelection = allFormulas.slice(0, count);
+
+      return res.json({
+        success: true,
+        count: randomSelection.length,
+        totalAvailable: allFormulas.length,
+        formulas: randomSelection
+      });
+    } catch (error) {
+      console.error('[FormulaController] getRandomFormulas error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }

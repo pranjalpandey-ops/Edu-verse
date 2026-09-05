@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   BookOpen, Search, Sparkles, Copy, Check, Play, Filter, 
   Layers, ArrowRight, RotateCcw, Award, CheckCircle2, ChevronRight,
-  Flame, Zap, Compass, Atom, Cpu, RefreshCw, HelpCircle, Plus, Eye, EyeOff, Loader2
+  Flame, Zap, Compass, Atom, Cpu, RefreshCw, HelpCircle, Plus, Eye, EyeOff, Loader2, Shuffle, Dices
 } from 'lucide-react';
 import { formulaAPI, revisionAPI, flashcardsAPI } from '../services/api';
 
@@ -25,16 +25,21 @@ const SUBJECTS = [
 export default function Revision() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'spaced_repetition';
+  const defaultTab = searchParams.get('tab') || 'random_formulas';
 
-  const [activeTab, setActiveTab] = useState(defaultTab); // 'spaced_repetition' | 'formulas'
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'random_formulas' | 'spaced_repetition' | 'formulas'
   
+  // Random / Unseen Formulas State
+  const [randomFormulas, setRandomFormulas] = useState([]);
+  const [loadingRandom, setLoadingRandom] = useState(false);
+  const [randomSubjectFilter, setRandomSubjectFilter] = useState('all');
+
   // Spaced Repetition State
   const [dueItems, setDueReviews] = useState([]);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [loadingReviews, setLoadingReviews] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewCompleted, setReviewCompleted] = useState(false);
   const [customTopic, setCustomTopic] = useState('');
@@ -49,6 +54,7 @@ export default function Revision() {
   const [copiedFormula, setCopiedFormula] = useState(null);
 
   useEffect(() => {
+    fetchRandomFormulas();
     loadDueReviews();
   }, []);
 
@@ -57,6 +63,23 @@ export default function Revision() {
       fetchCurriculum();
     }
   }, [activeTab, selectedGrade, selectedSubject]);
+
+  const fetchRandomFormulas = async () => {
+    setLoadingRandom(true);
+    try {
+      const res = await formulaAPI.getRandom({
+        count: 6,
+        subject: randomSubjectFilter === 'all' ? undefined : randomSubjectFilter
+      });
+      if (res.data?.success) {
+        setRandomFormulas(res.data.formulas || []);
+      }
+    } catch (err) {
+      console.error('Error fetching random formulas:', err);
+    } finally {
+      setLoadingRandom(false);
+    }
+  };
 
   const loadDueReviews = async () => {
     setLoadingReviews(true);
@@ -156,23 +179,35 @@ export default function Revision() {
     <div className="min-h-screen text-slate-800 dark:text-slate-100 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300 transition-colors pb-16">
       
       {/* Header Banner */}
-      <div className="relative rounded-3xl p-6 md:p-8 overflow-hidden bg-gradient-to-r from-purple-100 via-indigo-50 to-blue-100 dark:from-purple-950/60 dark:via-slate-900 dark:to-indigo-950/60 border border-purple-200 dark:border-purple-500/20 backdrop-blur-xl shadow-sm dark:shadow-2xl transition-all">
+      <div className="relative rounded-3xl p-6 md:p-8 overflow-hidden bg-gradient-to-r from-blue-100 via-indigo-50 to-purple-100 dark:from-blue-950/60 dark:via-slate-900 dark:to-purple-950/60 border border-blue-200 dark:border-blue-500/20 backdrop-blur-xl shadow-sm dark:shadow-2xl transition-all">
         <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-400/30 text-purple-700 dark:text-purple-400 text-xs font-semibold tracking-wide">
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>SM-2 SPACED REPETITION & REVISION ENGINE</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-700 dark:text-blue-400 text-xs font-semibold tracking-wide">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>UNSEEN FORMULA DISCOVERY & REVISION VAULT</span>
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Smart Revision & <span className="bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-300 bg-clip-text text-transparent">Retention Vault</span>
+            Formulas, Derivations & <span className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-300 bg-clip-text text-transparent">Spaced Retention</span>
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base">
-            Scientifically calibrated spaced repetition (SuperMemo-2 algorithm) and comprehensive Class 9–12 formula curriculum.
+            Discover random formulas from across all classes and subjects, practice with SuperMemo SM-2 spaced repetition, or browse the complete Class 9–12 vault.
           </p>
         </div>
       </div>
 
       {/* Main Tab Switcher */}
-      <div className="flex items-center gap-3 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit">
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-fit">
+        <button
+          onClick={() => setActiveTab('random_formulas')}
+          className={`px-5 py-2.5 rounded-xl font-bold text-xs md:text-sm transition flex items-center gap-2 cursor-pointer ${
+            activeTab === 'random_formulas'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Dices className="w-4 h-4" />
+          <span>Discover Random Formulas</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('spaced_repetition')}
           className={`px-5 py-2.5 rounded-xl font-bold text-xs md:text-sm transition flex items-center gap-2 cursor-pointer ${
@@ -194,11 +229,114 @@ export default function Revision() {
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>Class 9-12 Formula Vault</span>
+          <span>Class 9-12 Curriculum Vault</span>
         </button>
       </div>
 
-      {/* TAB 1: SPACED REPETITION FLASHCARDS (SM-2) */}
+      {/* TAB 1: RANDOM FORMULA DISCOVERY */}
+      {activeTab === 'random_formulas' && (
+        <div className="space-y-6">
+          {/* Top Shuffle Controls & Subject Filters */}
+          <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Dices className="w-5 h-5 text-blue-600 dark:text-cyan-400" />
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Unseen & Random Formula Cards</h2>
+              </div>
+              <p className="text-xs text-slate-500">
+                Surfacing fresh mathematical, chemical, and physical formulas across different grades and chapters.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={fetchRandomFormulas}
+                disabled={loadingRandom}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Shuffle className={`w-3.5 h-3.5 ${loadingRandom ? 'animate-spin' : ''}`} />
+                <span>Shuffle & Discover More</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Random Formulas Grid */}
+          {loadingRandom ? (
+            <div className="py-16 text-center space-y-3">
+              <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-xs text-slate-500">Shuffling and retrieving fresh formulas...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {randomFormulas.map((f, idx) => {
+                const isCopied = copiedFormula === `rand_${idx}`;
+                return (
+                  <div
+                    key={idx}
+                    className="p-5 rounded-3xl bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500/40 shadow-xs hover:shadow-md transition space-y-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-cyan-300 text-[10px] font-bold">
+                            {f.grade || 'Curriculum'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
+                            {f.subject}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleCopy(f.formula, `rand_${idx}`)}
+                          className="text-slate-400 hover:text-blue-600 dark:hover:text-cyan-400 p-1 transition cursor-pointer"
+                          title="Copy Formula"
+                        >
+                          {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                        {f.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-400 line-clamp-1">
+                        📖 Chapter: {f.chapter}
+                      </p>
+
+                      {/* Formula Box */}
+                      <div className="p-3 rounded-2xl bg-blue-900/5 dark:bg-black/40 border border-blue-200/50 dark:border-blue-500/20 font-mono text-xs md:text-sm text-blue-700 dark:text-cyan-300 font-bold overflow-x-auto">
+                        {f.formula}
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {f.description}
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <button
+                        onClick={() => navigate(`/search?q=${encodeURIComponent(f.name + ' ' + (f.chapter || ''))}`)}
+                        className="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-cyan-400 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Search className="w-3 h-3" />
+                        <span>Search Breakdown</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleLaunchLesson(f.lessonTopic || f.name)}
+                        className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>AI Lesson</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: SPACED REPETITION FLASHCARDS (SM-2) */}
       {activeTab === 'spaced_repetition' && (
         <div className="space-y-6">
           
@@ -242,13 +380,13 @@ export default function Revision() {
               <div className="flex justify-center gap-3 pt-2">
                 <button
                   onClick={loadDueReviews}
-                  className="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs cursor-pointer"
                 >
                   Review Again
                 </button>
                 <button
                   onClick={() => navigate('/dashboard')}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
                 >
                   Return to Dashboard
                 </button>
@@ -353,7 +491,7 @@ export default function Revision() {
               <RotateCcw className="w-10 h-10 text-slate-400 mx-auto" />
               <h3 className="font-bold text-slate-800 dark:text-white text-base">No Flashcards Due Right Now</h3>
               <p className="text-xs text-slate-500">
-                You are completely caught up on your spaced repetition schedule. Generate new flashcards from any topic above or review the formula vault below!
+                You are completely caught up on your spaced repetition schedule. Generate new flashcards from any topic above or discover random formulas!
               </p>
             </div>
           )}
@@ -361,7 +499,7 @@ export default function Revision() {
         </div>
       )}
 
-      {/* TAB 2: CLASS 9-12 FORMULA VAULT */}
+      {/* TAB 3: CLASS 9-12 FORMULA VAULT */}
       {activeTab === 'formulas' && (
         <div className="space-y-6">
           {/* Grade Selector Tabs */}
@@ -449,7 +587,7 @@ export default function Revision() {
                             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{f.name}</span>
                             <button
                               onClick={() => handleCopy(f.formula, fUniqueId)}
-                              className="text-slate-400 hover:text-blue-600 dark:hover:text-cyan-400 p-1 rounded-md transition"
+                              className="text-slate-400 hover:text-blue-600 dark:hover:text-cyan-400 p-1 rounded-md transition cursor-pointer"
                             >
                               {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                             </button>

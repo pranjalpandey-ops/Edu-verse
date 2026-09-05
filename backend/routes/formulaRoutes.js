@@ -8,6 +8,9 @@ router.get('/curriculum', (req, res) => formulaController.getCurriculum(req, res
 // GET /api/formulas/search?query=newton
 router.get('/search', (req, res) => formulaController.searchFormulas(req, res));
 
+// GET /api/formulas/random?count=6&subject=all
+router.get('/random', (req, res) => formulaController.getRandomFormulas(req, res));
+
 // GET /api/formulas/grades
 router.get('/grades', (req, res) => {
   res.json({

@@ -88,6 +88,19 @@ app.use('/api/homework', homeworkRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/knowledge-graph', knowledgeGraphRoutes);
 
+// Serve static frontend build in production
+const frontendDist = path.join(__dirname, '../frontend/dist');
+const fs = require('fs');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 // Global Error Handler
 app.use(errorHandler);
 
