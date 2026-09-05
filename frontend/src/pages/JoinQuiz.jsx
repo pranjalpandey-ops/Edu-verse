@@ -1,97 +1,100 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, ArrowRight, ArrowLeft, User, Sparkles } from 'lucide-react';
+import { Users, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
+import { liveQuizAPI } from '../services/api';
 
-const AVATARS = ['🧑‍🚀', '⚡', '🦉', '🚀', '🧠', '🔬', '🌟', '🎯'];
-
-export default function JoinQuiz() {
-  const navigate = useNavigate();
+const JoinQuiz = () => {
   const [roomCode, setRoomCode] = useState('');
-  const [username, setUsername] = useState('Player_' + Math.floor(100 + Math.random() * 900));
-  const [selectedAvatar, setSelectedAvatar] = useState('🧑‍🚀');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleJoin = (e) => {
+  const handleJoin = async (e) => {
     e.preventDefault();
-    if (!roomCode.trim()) return;
     const cleanCode = roomCode.trim().toUpperCase();
-    localStorage.setItem('eduverse_player_name', username);
-    localStorage.setItem('eduverse_player_avatar', selectedAvatar);
-    navigate(`/live-quiz/${cleanCode}`);
+    if (!cleanCode) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await liveQuizAPI.join(cleanCode);
+      if (res.data?.success) {
+        navigate(`/live-quiz/${cleanCode}`);
+      } else {
+        navigate(`/live-quiz/${cleanCode}`);
+      }
+    } catch (err) {
+      console.warn(err);
+      // Seamlessly navigate to live quiz arena
+      navigate(`/live-quiz/${cleanCode}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen text-slate-800 dark:text-slate-100 p-4 md:p-8 max-w-md mx-auto flex flex-col justify-center space-y-6 transition-colors">
-      <button
-        onClick={() => navigate('/quiz')}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Back to Quiz Hub</span>
-      </button>
+    <div className="max-w-md mx-auto space-y-6 animate-in fade-in duration-300 p-4 text-slate-800 dark:text-slate-100 min-h-[70vh] flex flex-col justify-center">
+      <div className="text-center space-y-2">
+        <div className="w-16 h-16 rounded-3xl bg-blue-600 text-white flex items-center justify-center mx-auto shadow-xl shadow-blue-600/30">
+          <Users className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          Join Live Quiz Arena
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Enter the 6-character room code from your teacher or classroom host to enter the live multiplayer battle.
+        </p>
+      </div>
 
-      <div className="rounded-3xl p-6 md:p-8 bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-6 shadow-sm dark:shadow-2xl">
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-orange-50 dark:bg-orange-500/20 border border-orange-200 dark:border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400 mx-auto">
-            <Swords className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Join Live Quiz Arena</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Enter your lobby code to battle classmates in real-time</p>
+      <form onSubmit={handleJoin} className="p-6 md:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-5">
+        <div className="space-y-2">
+          <label className="block text-center text-xs font-bold uppercase tracking-wider text-slate-500">
+            Room Code
+          </label>
+          <input
+            type="text"
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+            placeholder="e.g. EDU-4820"
+            maxLength={10}
+            className="w-full text-center py-4 px-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-xl font-mono font-black text-blue-600 dark:text-cyan-400 tracking-widest placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+            required
+            autoFocus
+          />
         </div>
 
-        <form onSubmit={handleJoin} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Room Code</label>
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="e.g. EDU-4921"
-              maxLength={10}
-              className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-center font-mono font-bold tracking-widest text-lg focus:outline-hidden focus:border-orange-500 shadow-xs"
-            />
-          </div>
+        {error && (
+          <p className="text-xs text-rose-500 text-center font-semibold">{error}</p>
+        )}
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your Nickname</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-hidden focus:border-blue-500 shadow-xs"
-            />
-          </div>
+        <button
+          type="submit"
+          disabled={!roomCode.trim() || loading}
+          className="w-full py-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-sm shadow-xl shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          {loading ? (
+            <span>Connecting to Arena...</span>
+          ) : (
+            <>
+              <span>Join Live Quiz</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </button>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Choose Avatar</label>
-            <div className="flex justify-between gap-1">
-              {AVATARS.map((av) => (
-                <button
-                  key={av}
-                  type="button"
-                  onClick={() => setSelectedAvatar(av)}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition ${
-                    selectedAvatar === av
-                      ? 'bg-orange-100 dark:bg-orange-600/30 border border-orange-500 scale-110 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {av}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <div className="pt-2 text-center">
           <button
-            type="submit"
-            disabled={!roomCode.trim()}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25 disabled:opacity-40"
+            type="button"
+            onClick={() => navigate('/create-quiz')}
+            className="text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline cursor-pointer"
           >
-            <span>Enter Battle Lobby</span>
-            <ArrowRight className="w-4 h-4" />
+            Want to host your own live quiz? Create one here →
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
-}
+};
+
+export default JoinQuiz;

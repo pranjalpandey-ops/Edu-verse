@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const revisionController = require('../controllers/revisionController');
+const controller = require('../controllers/revisionController');
+const { verifyToken } = require('../middleware/authMiddleware');
 
-router.get('/', (req, res) => revisionController.getRevisionItems(req, res));
-router.post('/review', (req, res) => revisionController.recordReview(req, res));
+router.get('/today', verifyToken, controller.getTodayDue);
+router.post('/review', verifyToken, controller.submitReview);
+router.get('/upcoming', verifyToken, controller.getUpcoming);
 
 module.exports = router;

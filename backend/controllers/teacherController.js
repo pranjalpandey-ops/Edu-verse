@@ -1,40 +1,94 @@
 const aiService = require('../services/aiService');
 const misconceptionDetector = require('../ai/misconceptionDetector');
 const visualPlanner = require('../ai/visualPlanner');
+const ragPipeline = require('../rag/ragPipeline');
+const { LearningProfile, ConceptMastery } = require('../models');
+const masteryService = require('../services/masteryService');
 
 class TeacherController {
   async chat(req, res) {
     try {
-      const { message, topic = 'General Concept', sectionTitle = '', history = [] } = req.body;
+      const userId = req.user?.id || 'demo_user';
+      const {
+        message,
+        topic = 'Academic Foundations',
+        sectionTitle = 'Core Concept',
+        history = [],
+        mode = 'normal',
+        language = 'English',
+        materialId = null
+      } = req.body;
+
       const cleanTopic = topic.charAt(0).toUpperCase() + topic.slice(1);
 
-      // Determine emotional avatar state based on query tone
+      // Load personalized profile & mastery memory
+      const [profile, masteryDoc] = await Promise.all([
+        LearningProfile.findOne({ userId: userId.toString() }),
+        ConceptMastery.findOne({ userId: userId.toString(), concept: cleanTopic })
+      ]);
+
+      const explanationStyle = profile?.preferredExplanationStyle || 'visual';
+      const studentLevel = profile?.currentLevel || 'High School';
+      const isWeak = masteryDoc?.status === 'weak' || (masteryDoc?.masteryScore || 100) < 60;
+
+      // Emotional avatar state
       let avatarState = 'explaining';
       const lower = (message || '').toLowerCase();
-      if (lower.includes('confused') || lower.includes('don\'t understand') || lower.includes('hard') || lower.includes('wrong')) {
+      if (lower.includes('confused') || lower.includes("don't understand") || lower.includes('hard') || lower.includes('wrong') || lower.includes('stuck')) {
         avatarState = 'encouraging';
-      } else if (lower.includes('why') || lower.includes('how') || lower.includes('calculate') || lower.includes('prove')) {
+      } else if (lower.includes('why') || lower.includes('how') || lower.includes('calculate') || lower.includes('prove') || lower.includes('derive')) {
         avatarState = 'thinking';
-      } else if (lower.includes('got it') || lower.includes('correct') || lower.includes('thank') || lower.includes('understand')) {
+      } else if (lower.includes('got it') || lower.includes('correct') || lower.includes('thank') || lower.includes('understand') || lower.includes('awesome')) {
         avatarState = 'celebrating';
       }
 
-      // Generate dynamic response text
-      const prompt = `Student asked in lesson on "${cleanTopic}" (Section: "${sectionTitle}"): "${message}". Provide a warm, clear, pedagogically sound human teacher response under 3 sentences.`;
-      const responseText = await aiService.generateText(prompt);
+      // Check RAG context if materialId is provided
+      let ragContext = null;
+      if (materialId) {
+        ragContext = await ragPipeline.buildGroundedPrompt(message, materialId);
+      }
 
-      // Generate visual plan update for the blackboard if relevant
+      // Generate teacher response with personalized profile memory
+      const teacherRes = await aiService.generateTeacherResponse({
+        studentProfile: {
+          level: studentLevel,
+          preferredExplanationStyle: explanationStyle,
+          isWeakConcept: isWeak,
+          weakConcepts: profile?.weakConcepts || []
+        },
+        lessonTitle: cleanTopic,
+        currentConcept: sectionTitle,
+        studentMessage: message,
+        mode: mode === 'normal' ? explanationStyle : mode,
+        language: profile?.preferredLanguage || language,
+        ragContext
+      });
+
+      // Log teacher question/conversation event
+      await masteryService.recordLearningEvent({
+        userId,
+        type: 'teacher_question',
+        concept: cleanTopic,
+        score: null,
+        duration: 20,
+        metadata: { messageLength: message.length, mode }
+      });
+
+      // Visual plan update
       const visualData = visualPlanner.planVisual(cleanTopic, sectionTitle, message);
 
       return res.json({
         success: true,
-        reply: responseText,
+        reply: teacherRes.reply,
         avatarState,
-        boardUpdate: {
-          title: `${cleanTopic} - Teacher Insight`,
+        teachingStrategy: teacherRes.teachingStrategy || mode,
+        boardUpdate: teacherRes.visual || {
+          title: `${sectionTitle} - Core Breakdown`,
           visualType: visualData.visualType,
-          elements: visualData.elements || ['1. Core Principle', '2. Governing Law', '3. Application']
+          elements: visualData.elements || ['1. Principle', '2. Mechanism', '3. Application']
         },
+        followUpQuestion: teacherRes.followUpQuestion || null,
+        sources: ragContext?.sources || [],
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -46,7 +100,6 @@ class TeacherController {
   async speak(req, res) {
     try {
       const { text, voice = 'en-US-Neural2-F', speed = 1.0 } = req.body;
-      // Provide clean speech synthesis payload for browser SpeechSynthesis / Audio API
       return res.json({
         success: true,
         text: text || 'Welcome to EduVerse AI Classroom.',

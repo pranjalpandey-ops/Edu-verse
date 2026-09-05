@@ -1,22 +1,28 @@
 const { Note } = require('../models');
+const aiService = require('../services/aiService');
 
 exports.generateNotes = async (req, res) => {
   try {
-    const { topic = "Physics: Electricity & Ohm's Law" } = req.body;
+    const { topic = "Core Academic Principles" } = req.body;
+    
+    let summaryData = null;
+    try {
+      summaryData = await aiService.generateSummary(topic);
+    } catch (e) {
+      console.warn('[Notes] Fallback for:', topic);
+    }
+
     const note = await Note.create({
-      title: `${topic} - Master Summary`,
+      title: `${topic} - Master Study Notes`,
       topic,
-      summary: "Comprehensive key concepts covering charge flow, potential difference, and Ohm's Law.",
-      formulas: [
-        { name: "Current Definition", formula: "I = Q / t", unit: "Amperes (A)" },
-        { name: "Ohm's Law", formula: "V = I \times R", unit: "Volts (V)" },
-        { name: "Resistance Formula", formula: "R = \rho \frac{L}{A}", unit: "Ohms (Ω)" },
-        { name: "Electrical Power", formula: "P = V \times I = I^2 R = \frac{V^2}{R}", unit: "Watts (W)" }
+      summary: summaryData?.overview || `Comprehensive summary and study notes covering ${topic}.`,
+      formulas: summaryData?.formulas?.map(f => ({ name: typeof f === 'string' ? f : f.name, formula: typeof f === 'string' ? f : f.formula })) || [
+        { name: "Governing Law", formula: "\\text{Output} = f(\\text{Input}, \\text{Constraints})" }
       ],
-      keyPoints: [
-        "Current is inversely proportional to resistance for a fixed voltage.",
-        "Voltage is the driving pressure (potential difference) in the circuit.",
-        "Water-pipe analogy: Squeezing a pipe tighter (more R) reduces water flow rate (I)."
+      keyPoints: summaryData?.keyConcepts || [
+        `1. Fundamental conservation and governing rules of ${topic}.`,
+        `2. Balancing driving forces against opposing constraints.`,
+        `3. Real-world application and problem-solving strategies.`
       ],
       createdAt: new Date().toISOString()
     });
@@ -31,16 +37,15 @@ exports.getNotes = async (req, res) => {
     let notes = await Note.find();
     if (!notes || notes.length === 0) {
       const defaultNote = await Note.create({
-        title: "Physics: Electricity & Ohm's Law - Master Notes",
-        topic: "Physics: Electricity",
-        summary: "Essential reference points for exam preparation.",
+        title: "Introduction to Natural Sciences - Master Notes",
+        topic: "Foundations of Science",
+        summary: "Essential reference points and formulas for exam preparation.",
         formulas: [
-          { name: "Ohm's Law", formula: "V = I * R", unit: "Volts (V)" },
-          { name: "Electric Current", formula: "I = Q / t", unit: "Amperes (A)" }
+          { name: "Conservation Principle", formula: "E_{total} = \\text{constant}", unit: "Joules (J)" }
         ],
         keyPoints: [
-          "Ohm's Law applies to metallic conductors at constant temperature.",
-          "Remember: Higher resistance = Lower current when Voltage is constant!"
+          "Energy can neither be created nor destroyed.",
+          "Systems tend toward equilibrium unless acted upon by external forces."
         ]
       });
       notes = [defaultNote];

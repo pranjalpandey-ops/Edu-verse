@@ -8,5 +8,8 @@ router.post('/upload', protect, upload.single('file'), materialController.upload
 router.get('/', protect, materialController.getMaterials);
 router.get('/:id', protect, materialController.getMaterialById);
 router.delete('/:id', protect, materialController.deleteMaterial);
+router.post('/:id/ask', protect, materialController.askMaterial);
+router.post('/:id/summarize', protect, materialController.summarizeMaterial);
+router.post('/:id/lesson', protect, materialController.generateLessonFromMaterial);
 
 module.exports = router;

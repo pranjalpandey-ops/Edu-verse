@@ -24,6 +24,13 @@ const teacherRoutes = require('./routes/teacherRoutes');
 const studyPlanRoutes = require('./routes/studyPlanRoutes');
 const revisionRoutes = require('./routes/revisionRoutes');
 const formulaRoutes = require('./routes/formulaRoutes');
+const learningProfileRoutes = require('./routes/learningProfileRoutes');
+const flashcardRoutes = require('./routes/flashcardRoutes');
+const recommendationRoutes = require('./routes/recommendationRoutes');
+const challengeRoutes = require('./routes/challengeRoutes');
+const homeworkRoutes = require('./routes/homeworkRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
+const knowledgeGraphRoutes = require('./routes/knowledgeGraphRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -67,10 +74,19 @@ app.use('/api/notes', noteRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/quizzes', quizRoutes);
+app.use('/api/quiz', quizRoutes);
+app.use('/api/live-quiz', quizRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/study-plan', studyPlanRoutes);
 app.use('/api/revision', revisionRoutes);
 app.use('/api/formulas', formulaRoutes);
+app.use('/api/learning-profile', learningProfileRoutes);
+app.use('/api/flashcards', flashcardRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/challenge', challengeRoutes);
+app.use('/api/homework', homeworkRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/knowledge-graph', knowledgeGraphRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

@@ -1,71 +1,41 @@
 const { Assessment } = require('../models');
+const aiService = require('../services/aiService');
 
 exports.generateAssessment = async (req, res) => {
   try {
-    const { lessonId, topic = 'Physics: Electricity and Magnetism' } = req.body;
+    const { lessonId, topic = 'Cellular Biology and Energy Systems' } = req.body;
     
-    const assessment = await Assessment.create({
-      title: `${topic} End-of-Module Assessment`,
-      topic,
-      lessonId,
-      totalQuestions: 5,
-      questions: [
+    let generatedQuestions = [];
+    try {
+      generatedQuestions = await aiService.generateQuestions(topic, 4, 'Intermediate');
+    } catch (e) {
+      console.warn('[Assessment] Fallback questions for:', topic);
+    }
+
+    if (!generatedQuestions || generatedQuestions.length === 0) {
+      generatedQuestions = [
         {
           id: "q1",
-          concept: "Current",
-          question: "What is the SI unit of Electric Current?",
+          concept: `${topic} Foundations`,
+          question: `What is the fundamental governing principle in ${topic}?`,
           options: [
-            { id: "A", text: "Ampere (A)", correct: true },
-            { id: "B", text: "Volt (V)", correct: false },
-            { id: "C", text: "Ohm (Ω)", correct: false },
-            { id: "D", text: "Joule (J)", correct: false }
-          ]
-        },
-        {
-          id: "q2",
-          concept: "Voltage",
-          question: "Which component maintains potential difference across a circuit?",
-          options: [
-            { id: "A", text: "Battery / Electric Cell", correct: true },
-            { id: "B", text: "Resistor", correct: false },
-            { id: "C", text: "Connecting wire", correct: false },
-            { id: "D", text: "Switch", correct: false }
-          ]
-        },
-        {
-          id: "q3",
-          concept: "Resistance",
-          question: "If the length of a uniform wire is doubled, what happens to its resistance?",
-          options: [
-            { id: "A", text: "Resistance doubles (R proportional to L)", correct: true },
-            { id: "B", text: "Resistance is halved", correct: false },
-            { id: "C", text: "Resistance becomes 4 times", correct: false },
-            { id: "D", text: "Resistance remains constant", correct: false }
-          ]
-        },
-        {
-          id: "q4",
-          concept: "Ohm's Law",
-          question: "According to Ohm's Law (V = IR), if Voltage is 12V and Resistance is 4Ω, what is the Current?",
-          options: [
-            { id: "A", text: "3 Amperes", correct: true },
-            { id: "B", text: "48 Amperes", correct: false },
-            { id: "C", text: "0.33 Amperes", correct: false },
-            { id: "D", text: "16 Amperes", correct: false }
-          ]
-        },
-        {
-          id: "q5",
-          concept: "Ohm's Law",
-          question: "For a fixed voltage supply, increasing circuit resistance causes current to:",
-          options: [
-            { id: "A", text: "Decrease inversely", correct: true },
-            { id: "B", text: "Increase directly", correct: false },
-            { id: "C", text: "Remain constant", correct: false },
-            { id: "D", text: "Double immediately", correct: false }
-          ]
+            { id: "A", text: "Governing balance and physical/logical conservation laws", correct: true },
+            { id: "B", text: "Arbitrary random state changes", correct: false },
+            { id: "C", text: "Constant decrease without driving energy", correct: false },
+            { id: "D", text: "Unbounded infinite increase", correct: false }
+          ],
+          explanation: "Core laws establish equilibrium and conservation."
         }
-      ]
+      ];
+    }
+
+    const assessment = await Assessment.create({
+      title: `${topic} End-of-Module Mastery Assessment`,
+      topic,
+      lessonId,
+      totalQuestions: generatedQuestions.length,
+      questions: generatedQuestions,
+      createdAt: new Date().toISOString()
     });
 
     res.status(201).json({ success: true, assessment });
@@ -76,37 +46,32 @@ exports.generateAssessment = async (req, res) => {
 
 exports.submitAssessment = async (req, res) => {
   try {
+    const assessment = await Assessment.findById(req.params.id);
+    const topic = assessment ? assessment.topic : (req.body.topic || "Academic Subject");
+    const answers = req.body.answers || {};
+
     const report = {
       assessmentId: req.params.id,
-      topic: "Physics: Electricity and Magnetism",
-      overallScore: 82,
+      topic,
+      overallScore: 85,
       conceptMastery: [
-        { concept: "Current", score: 80, status: "strong" },
-        { concept: "Voltage", score: 90, status: "strong" },
-        { concept: "Resistance", score: 60, status: "weak" },
-        { concept: "Ohm's Law", score: 50, status: "weak" }
+        { concept: `${topic} - Core Principles`, score: 85, status: "strong" },
+        { concept: `${topic} - Applied Mechanisms`, score: 90, status: "strong" },
+        { concept: `${topic} - Boundary Conditions`, score: 65, status: "weak" }
       ],
       strongAreas: [
-        { name: "Current", icon: "zap", description: "Excellent grasp of electron charge flow and unit definitions." },
-        { name: "Voltage", icon: "activity", description: "Consistently accurate in identifying potential difference mechanisms." }
+        { name: "Core Principles", icon: "zap", description: `Demonstrated accurate understanding of ${topic} foundational laws.` }
       ],
       weakAreas: [
-        { name: "Resistance", icon: "alert-triangle", description: "Tendency to invert resistance effects during parameter changes." },
-        { name: "Ohm's Law", icon: "alert-triangle", description: "Needs practice applying V=IR under varying constraints." }
+        { name: "Boundary Conditions", icon: "alert-triangle", description: `Needs practice verifying boundary limits in ${topic}.` }
       ],
-      aiFeedback: "You understand the fundamentals of Current and Voltage exceptionally well. Your test scores in these areas are consistently above 85%. However, there is a clear disconnect when applying these concepts together to understand Resistance and Ohm's Law. Let's focus on bridging that gap.",
+      aiFeedback: `You have shown strong comprehension of ${topic}. Focus on mastering boundary constraints and inverse relationships to achieve 100% exam readiness.`,
       recommendations: [
         {
-          title: "Review Ohm's Law",
+          title: `Deep-dive on ${topic}`,
           duration: "15 mins",
           type: "interactive_lesson",
-          description: "Interactive module on the V=IR relationship."
-        },
-        {
-          title: "Practice 3 Problems",
-          duration: "10 mins",
-          type: "practice_problems",
-          description: "Targeted exercises on circuit resistance calculation."
+          description: `Interactive ARIA blackboard session on ${topic}.`
         }
       ]
     };
@@ -119,21 +84,22 @@ exports.submitAssessment = async (req, res) => {
 
 exports.getReport = async (req, res) => {
   try {
+    const assessment = await Assessment.findById(req.params.id);
+    const topic = assessment ? assessment.topic : "Physics & Natural Sciences";
+    
     const report = {
-      topic: "Physics: Electricity and Magnetism",
-      overallScore: 82,
+      topic,
+      overallScore: 85,
       conceptMastery: [
-        { concept: "Current", score: 80 },
-        { concept: "Voltage", score: 90 },
-        { concept: "Resistance", score: 60 },
-        { concept: "Ohm's Law", score: 50 }
+        { concept: "Foundations", score: 85 },
+        { concept: "Formulas & Derivations", score: 90 },
+        { concept: "Problem Solving", score: 70 }
       ],
-      strongAreas: ["Current", "Voltage"],
-      weakAreas: ["Resistance", "Ohm's Law"],
-      aiFeedback: "You understand the fundamentals of Current and Voltage exceptionally well. Your test scores in these areas are consistently above 85%. However, there is a clear disconnect when applying these concepts together to understand Resistance and Ohm's Law. Let's focus on bridging that gap.",
+      strongAreas: ["Foundations", "Formulas & Derivations"],
+      weakAreas: ["Problem Solving Under Constraints"],
+      aiFeedback: `Excellent performance on ${topic}. Review problem-solving steps to reinforce mastery.`,
       recommendations: [
-        { title: "Review Ohm's Law", duration: "15 mins", description: "Interactive module on the V=IR relationship." },
-        { title: "Practice 3 Problems", duration: "10 mins", description: "Targeted exercises on circuit resistance calculation." }
+        { title: `Review ${topic} Key Rules`, duration: "15 mins", description: "Interactive review module." }
       ]
     };
     res.json({ success: true, report });

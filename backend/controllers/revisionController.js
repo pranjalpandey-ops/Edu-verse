@@ -1,84 +1,65 @@
-class RevisionController {
-  async getRevisionItems(req, res) {
-    try {
-      const items = [
-        {
-          id: 'card_1',
-          topic: 'Physics',
-          concept: 'Ohm\'s Law & Resistance',
-          front: 'What happens to electric current if resistance is tripled at constant voltage?',
-          back: 'Current is reduced to 1/3 of its original value (I = V/R: inverse relationship).',
-          intervalDays: 1,
-          repetitionCount: 2,
-          easeFactor: 2.5,
-          nextReviewDate: new Date().toISOString(),
-          status: 'due'
-        },
-        {
-          id: 'card_2',
-          topic: 'Computer Science',
-          concept: 'Binary Search Time Complexity',
-          front: 'What is the worst-case and average time complexity of Binary Search on a sorted array of N elements?',
-          back: 'O(log N), because the search space is divided in half at every step.',
-          intervalDays: 3,
-          repetitionCount: 3,
-          easeFactor: 2.6,
-          nextReviewDate: new Date().toISOString(),
-          status: 'due'
-        },
-        {
-          id: 'card_3',
-          topic: 'Biology',
-          concept: 'Cellular Energy Currency',
-          front: 'Which molecule serves as the universal direct chemical energy carrier in living cells?',
-          back: 'ATP (Adenosine Triphosphate), releasing energy when hydrolyzed into ADP + Pi.',
-          intervalDays: 5,
-          repetitionCount: 4,
-          easeFactor: 2.7,
-          nextReviewDate: new Date(Date.now() + 86400000).toISOString(),
-          status: 'scheduled'
+const { ReviewItem, ConceptMastery } = require('../models');
+const masteryService = require('../services/masteryService');
+
+exports.getTodayDue = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || 'demo_user';
+    let dueItems = await masteryService.getDueReviews(userId);
+
+    // If no explicit review items exist yet, populate from weak/learning concept masteries
+    if (!dueItems || dueItems.length === 0) {
+      const masteries = await ConceptMastery.find({ userId: userId.toString() });
+      if (masteries.length > 0) {
+        for (const m of masteries.slice(0, 4)) {
+          const item = await ReviewItem.create({
+            userId: userId.toString(),
+            concept: m.concept,
+            question: `Explain the core mechanism and governing law of ${m.concept}.`,
+            answer: `Governing principle: ${m.concept} establishes direct functional relationships under boundary constraints.`,
+            difficulty: m.status === 'weak' ? 'hard' : 'medium',
+            interval: 1,
+            easeFactor: 2.5,
+            repetitions: 0,
+            nextReviewAt: new Date().toISOString(),
+            lastReviewedAt: null
+          });
+          dueItems.push(item);
         }
-      ];
-
-      return res.json({
-        success: true,
-        summary: {
-          dueToday: 2,
-          learning: 4,
-          mastered: 18,
-          totalCards: 24,
-          retentionRate: '94%'
-        },
-        items
-      });
-    } catch (error) {
-      console.error('[RevisionController] getRevisionItems error:', error);
-      res.status(500).json({ success: false, message: error.message });
+      }
     }
+
+    res.json({ success: true, count: dueItems.length, items: dueItems });
+  } catch (err) {
+    next(err);
   }
+};
 
-  async recordReview(req, res) {
-    try {
-      const { cardId, rating } = req.body; // rating: 'again' | 'hard' | 'good' | 'easy'
-      
-      let nextIntervalDays = 1;
-      if (rating === 'easy') nextIntervalDays = 4;
-      else if (rating === 'good') nextIntervalDays = 2;
-      else if (rating === 'hard') nextIntervalDays = 1;
-      else nextIntervalDays = 0; // repeat today
+exports.submitReview = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || 'demo_user';
+    const { itemId, quality, concept, question, answer } = req.body;
 
-      return res.json({
-        success: true,
-        cardId,
-        rating,
-        nextReviewDate: new Date(Date.now() + nextIntervalDays * 86400000).toISOString(),
-        message: `Card updated using SuperMemo-2 spaced repetition algorithm.`
-      });
-    } catch (error) {
-      console.error('[RevisionController] recordReview error:', error);
-      res.status(500).json({ success: false, message: error.message });
-    }
+    const result = await masteryService.processReview({
+      userId,
+      itemId,
+      quality: Number(quality) || 4,
+      concept,
+      question,
+      answer
+    });
+
+    res.json({ success: true, reviewItem: result });
+  } catch (err) {
+    next(err);
   }
-}
+};
 
-module.exports = new RevisionController();
+exports.getUpcoming = async (req, res, next) => {
+  try {
+    const userId = req.user?.id || 'demo_user';
+    const upcoming = await masteryService.getUpcomingReviews(userId);
+    res.json({ success: true, count: upcoming.length, items: upcoming });
+  } catch (err) {
+    next(err);
+  }
+};

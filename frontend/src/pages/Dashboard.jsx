@@ -3,34 +3,83 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, Sparkles, Video, Swords, Target, FolderOpen, RotateCcw, 
   Flame, Clock, Trophy, ArrowRight, Play, AlertTriangle, Compass, CheckCircle2, Zap,
-  Calendar, Bell, BookOpen, Upload, ArrowUpRight
+  Calendar, Bell, BookOpen, Upload, ArrowUpRight, HelpCircle, Check, Loader2, Award, Brain
 } from 'lucide-react';
-import { progressAPI, studyPlanAPI } from '../services/api';
+import { 
+  analyticsAPI, 
+  recommendationsAPI, 
+  dailyChallengeAPI, 
+  studyPlanAPI, 
+  revisionAPI, 
+  videoLearningAPI,
+  learningProfileAPI
+} from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [examData, setExamData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [analytics, setAnalytics] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [dailyChallenge, setDailyChallenge] = useState(null);
+  const [selectedChallengeAnswer, setSelectedChallengeAnswer] = useState(null);
+  const [challengeResult, setChallengeResult] = useState(null);
+  const [submittingChallenge, setSubmittingChallenge] = useState(false);
+  const [studyPlan, setStudyPlan] = useState(null);
+  const [dueReviews, setDueReviews] = useState([]);
+  const [watchHistory, setWatchHistory] = useState([]);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDashboardData();
+    loadAllDashboardData();
   }, []);
 
-  const loadDashboardData = async () => {
+  const loadAllDashboardData = async () => {
+    setLoading(true);
     try {
-      const [progRes, examRes] = await Promise.all([
-        progressAPI.get(),
-        studyPlanAPI.getExamSchedule()
+      const [
+        analyticsRes, 
+        recRes, 
+        challengeRes, 
+        planRes, 
+        revRes, 
+        historyRes,
+        profileRes
+      ] = await Promise.allSettled([
+        analyticsAPI.get(),
+        recommendationsAPI.get(),
+        dailyChallengeAPI.getToday(),
+        studyPlanAPI.get(),
+        revisionAPI.getToday(),
+        videoLearningAPI.getHistory(),
+        learningProfileAPI.get()
       ]);
-      if (progRes.data?.success) {
-        setData(progRes.data.dashboard);
+
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value.data?.analytics) {
+        setAnalytics(analyticsRes.value.data.analytics);
       }
-      if (examRes.data?.success) {
-        setExamData(examRes.data);
+      if (recRes.status === 'fulfilled' && recRes.value.data?.recommendations) {
+        setRecommendations(recRes.value.data.recommendations);
       }
-    } catch (e) {
-      console.error('Error loading dashboard data:', e);
+      if (challengeRes.status === 'fulfilled' && challengeRes.value.data?.challenge) {
+        setDailyChallenge(challengeRes.value.data.challenge);
+      }
+      if (planRes.status === 'fulfilled' && planRes.value.data?.plan) {
+        setStudyPlan(planRes.value.data.plan);
+      }
+      if (revRes.status === 'fulfilled' && revRes.value.data?.items) {
+        setDueReviews(revRes.value.data.items);
+      }
+      if (historyRes.status === 'fulfilled' && historyRes.value.data?.history) {
+        setWatchHistory(historyRes.value.data.history);
+      }
+      if (profileRes.status === 'fulfilled' && profileRes.value.data?.profile) {
+        setProfile(profileRes.value.data.profile);
+      }
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,33 +90,71 @@ export default function Dashboard() {
     }
   };
 
-  const d = data || {
-    greeting: "Welcome back, Pranjal",
-    subtitle: "What would you like to master today with EduVerse AI?",
-    todayGoal: { text: "60m", subText: "45m completed" },
-    learningStreak: { days: 7, delta: "+2 from last week" },
-    hoursLearned: { hours: 24.5, period: "This month" },
-    overallProgress: { percentage: 88 }
+  const handleSubmitChallenge = async () => {
+    if (!selectedChallengeAnswer || submittingChallenge) return;
+    setSubmittingChallenge(true);
+    try {
+      const res = await dailyChallengeAPI.submit({ answer: selectedChallengeAnswer });
+      if (res.data?.success && res.data.result) {
+        setChallengeResult(res.data.result);
+        const aRes = await analyticsAPI.get();
+        if (aRes.data?.analytics) setAnalytics(aRes.data.analytics);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingChallenge(false);
+    }
+  };
+
+  const handleToggleTask = async (taskId, currentStatus) => {
+    try {
+      if (studyPlanAPI.updateTask) {
+        await studyPlanAPI.updateTask(taskId, { completed: !currentStatus });
+      }
+      setStudyPlan(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          tasks: (prev.tasks || []).map(t => t.id === taskId ? { ...t, completed: !currentStatus } : t)
+        };
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const a = analytics || {
+    totalStudyTimeMinutes: 0,
+    lessonsCompleted: 0,
+    quizzesCompleted: 0,
+    averageQuizScore: 0,
+    masteryAverage: 0,
+    studyStreak: 1,
+    strongestConcepts: [],
+    weakestConcepts: [],
+    insights: ['Welcome to EduVerse! Establish your baseline mastery with an introductory lesson or quiz.']
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 max-w-7xl mx-auto text-slate-800 dark:text-slate-100 transition-colors pb-12">
+    <div className="space-y-8 animate-in fade-in duration-300 max-w-7xl mx-auto text-slate-800 dark:text-slate-100 transition-colors pb-16">
+      
       {/* Top Welcome & Search Banner */}
       <div className="relative rounded-3xl p-6 md:p-8 overflow-hidden bg-gradient-to-r from-blue-100 via-indigo-50 to-cyan-100 dark:from-blue-950/60 dark:via-slate-900 dark:to-indigo-950/60 border border-blue-200 dark:border-blue-500/20 shadow-sm dark:shadow-2xl transition-all">
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-700 dark:text-blue-400 text-xs font-semibold tracking-wide">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>UNIVERSAL AI LEARNING PLATFORM</span>
+            <span>LEARNING INTELLIGENCE PLATFORM</span>
           </div>
 
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            {d.greeting} 👋
+            Hello, Learner 👋
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base">
-            {d.subtitle}
+            What would you like to master today with your personalized AI teacher?
           </p>
 
-          {/* Quick Search Bar */}
+          {/* Universal Search Bar */}
           <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3 pt-2">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -75,7 +162,7 @@ export default function Dashboard() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search any topic (e.g. Lens Maker Formula, Nernst Equation, Differential Equations)..."
+                placeholder="Search any subject or concept (e.g. Binary Search, Photosynthesis, Equilibrium)..."
                 className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-300 dark:border-slate-700/70 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-hidden focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-xs"
               />
             </div>
@@ -84,14 +171,14 @@ export default function Dashboard() {
               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 shrink-0 cursor-pointer"
             >
               <Zap className="w-4 h-4" />
-              <span>Learn Now</span>
+              <span>Learn Concept</span>
             </button>
           </form>
 
           {/* Quick Concept Tags */}
           <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
             <span className="text-slate-500 dark:text-slate-400 font-medium">Quick Explore:</span>
-            {['Ray Optics', 'Integration by Parts', 'Chemical Kinetics', 'Molecular Genetics', 'Newton Laws'].map((t) => (
+            {['Chemical Kinetics', 'Binary Trees', 'Newton Laws', 'Genetics', 'Thermodynamics'].map((t) => (
               <button
                 key={t}
                 onClick={() => navigate(`/search?q=${encodeURIComponent(t)}`)}
@@ -104,227 +191,348 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Feature Navigation Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div
-          onClick={() => navigate('/revision')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-amber-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition">
-            <BookOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">Class 9-12 Formulas</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">All subjects & derivations</p>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate('/study-plan')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-emerald-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition">
-            <Calendar className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">Timetable & Schedule</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Upload & exam countdown</p>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate('/youtube')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-red-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-red-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-500/20 border border-red-200 dark:border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 group-hover:scale-110 transition">
-            <Video className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">YouTube Learn</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Timestamped grounded Q&A</p>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate('/quiz')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-orange-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-orange-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-orange-50 dark:bg-orange-500/20 border border-orange-200 dark:border-orange-500/30 flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition">
-            <Swords className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">Quiz & Live Arena</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Battle multiplayer live</p>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate('/search')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-blue-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition">
-            <Search className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">Search & Learn</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Any subject AI overview</p>
-          </div>
-        </div>
-
-        <div
-          onClick={() => navigate('/materials')}
-          className="p-4 rounded-3xl bg-white dark:bg-slate-900/60 hover:bg-indigo-50/50 dark:hover:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/40 backdrop-blur-xl transition cursor-pointer flex flex-col justify-between space-y-3 group shadow-xs"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition">
-            <FolderOpen className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-xs md:text-sm">Document RAG</h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">Upload PDF/DOCX/PPT</p>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
+      {/* Real KPI Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-bold uppercase tracking-wider">DAILY GOAL</span>
+            <span className="font-bold uppercase tracking-wider">STUDY TIME</span>
             <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{d.todayGoal.text}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{d.todayGoal.subText}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{a.totalStudyTimeMinutes} mins</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">Total verified active time</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-bold uppercase tracking-wider">LEARNING STREAK</span>
+            <span className="font-bold uppercase tracking-wider">ACTIVE STREAK</span>
             <Flame className="w-4 h-4 text-orange-500 dark:text-orange-400" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{d.learningStreak.days} Days</p>
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{d.learningStreak.delta}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{a.studyStreak} Days</p>
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Consistent retention</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-bold uppercase tracking-wider">TOTAL HOURS</span>
+            <span className="font-bold uppercase tracking-wider">QUIZZES & LESSONS</span>
             <Trophy className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{d.hoursLearned.hours} hrs</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">{d.hoursLearned.period}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{a.quizzesCompleted + a.lessonsCompleted}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">Avg Accuracy: {a.averageQuizScore}%</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-2 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span className="font-bold uppercase tracking-wider">OVERALL MASTERY</span>
+            <span className="font-bold uppercase tracking-wider">CONCEPT MASTERY</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{d.overallProgress.percentage}%</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{a.masteryAverage}%</p>
           <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-blue-600 dark:bg-cyan-400 h-full rounded-full" style={{ width: `${d.overallProgress.percentage}%` }} />
+            <div className="bg-blue-600 dark:bg-cyan-400 h-full rounded-full transition-all" style={{ width: `${a.masteryAverage}%` }} />
           </div>
         </div>
       </div>
 
-      {/* UPCOMING EXAM & TEST SCHEDULE WIDGET */}
-      <div className="rounded-3xl p-6 md:p-8 bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold">
-                TEST RADAR
-              </span>
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Upcoming Exam & Test Schedule
-              </h2>
+      {/* Main Intelligence Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Column: Recommendations, Daily Challenge, Continue Learning */}
+        <div className="lg:col-span-2 space-y-6">
+          
+          {/* 1. AI Recommendation Engine */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-cyan-400">
+                  <Sparkles className="w-4 h-4" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Recommended For You</h2>
+                  <p className="text-xs text-slate-500">Grounded in your learning history and mastery gaps</p>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Active test countdowns, syllabus indicators, and targeted revision links.
-            </p>
+
+            <div className="space-y-3">
+              {recommendations.slice(0, 3).map((rec) => (
+                <div
+                  key={rec.id}
+                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-blue-300 dark:hover:border-slate-600 transition"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-cyan-300 text-[10px] font-bold">
+                        {rec.badge}
+                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{rec.title}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{rec.subtitle}</p>
+                    <p className="text-[11px] text-slate-400 italic">💡 Reason: {rec.reason}</p>
+                  </div>
+
+                  <button
+                    onClick={() => navigate(rec.actionUrl || '/teacher')}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition shrink-0 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>{rec.actionText || 'Start Now'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/study-plan')}
-            className="text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer shrink-0"
-          >
-            <span>View Full Schedule & Timetable</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {(examData?.exams || []).slice(0, 3).map((exam) => (
-            <div
-              key={exam.id}
-              className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 space-y-3 flex flex-col justify-between hover:border-blue-400 transition"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-cyan-300">
-                    {exam.grade}
+          {/* 2. Daily AI Challenge */}
+          {dailyChallenge && (
+            <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent border border-amber-500/30 rounded-3xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <Zap className="w-4 h-4" />
                   </span>
-                  <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400">
-                    ⏳ {exam.daysLeft} Days Left
-                  </span>
-                </div>
-
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
-                  {exam.name}
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  📅 {exam.date} • Target: <strong className="text-blue-600 dark:text-cyan-400">{exam.targetScore}</strong>
-                </p>
-
-                <div className="space-y-1 pt-1">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Key Syllabus</span>
-                  <div className="space-y-0.5 text-[11px] text-slate-600 dark:text-slate-300">
-                    {exam.syllabus?.slice(0, 2).map((s, idx) => (
-                      <div key={idx} className="line-clamp-1 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                        <span>{s}</span>
-                      </div>
-                    ))}
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">Daily AI Challenge</h2>
+                    <p className="text-xs text-slate-500">Topic: {dailyChallenge.topic} • +50 Mastery XP</p>
                   </div>
                 </div>
+                {dailyChallenge.completed && (
+                  <span className="px-3 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Completed</span>
+                  </span>
+                )}
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-700/60 flex items-center justify-between">
-                <button
-                  onClick={() => navigate('/revision')}
-                  className="text-[11px] font-bold text-blue-600 dark:text-cyan-400 hover:underline cursor-pointer"
-                >
-                  Revise Formulas
-                </button>
-                <button
-                  onClick={() => navigate('/quiz')}
-                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition cursor-pointer"
-                >
-                  Practice Test
-                </button>
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-amber-500/20 space-y-3 shadow-xs">
+                <p className="text-xs md:text-sm font-semibold text-slate-900 dark:text-white leading-relaxed">
+                  {dailyChallenge.question}
+                </p>
+
+                {/* Challenge Options */}
+                {!dailyChallenge.completed && !challengeResult ? (
+                  <div className="space-y-2 pt-1">
+                    {dailyChallenge.options?.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setSelectedChallengeAnswer(opt.id)}
+                        className={`w-full p-3 rounded-xl border text-left text-xs font-medium transition flex items-center gap-3 cursor-pointer ${
+                          selectedChallengeAnswer === opt.id
+                            ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-500 text-amber-900 dark:text-amber-200'
+                            : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 hover:border-amber-300'
+                        }`}
+                      >
+                        <span className="w-5 h-5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-[10px]">
+                          {opt.id}
+                        </span>
+                        <span>{opt.text}</span>
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={handleSubmitChallenge}
+                      disabled={!selectedChallengeAnswer || submittingChallenge}
+                      className="mt-3 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {submittingChallenge ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Evaluating Deduction...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Award className="w-3.5 h-3.5" />
+                          <span>Submit Daily Deduction</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 text-xs space-y-1">
+                    <p className="font-bold text-emerald-700 dark:text-emerald-300">
+                      {challengeResult?.isCorrect || dailyChallenge.score > 0 ? '🎉 Excellent Deduction!' : '💡 Concept Review'}
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      {challengeResult?.explanation || dailyChallenge.explanation}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )}
 
-      {/* Quick Launch Classroom Card */}
-      <div className="rounded-3xl p-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 dark:from-blue-900/40 dark:via-slate-900 dark:to-indigo-900/40 border border-blue-200 dark:border-blue-500/30 backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-md dark:shadow-xl">
-        <div className="space-y-2">
-          <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-300 dark:border-blue-400/30">
-            ARIA AI TEACHER READY
-          </span>
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Enter the Dynamic AI Classroom</h2>
-          <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 max-w-xl">
-            Experience human-like voice explanations, real-time multimodal SVG blackboards, and instant misconception remediation on any subject.
-          </p>
+          {/* 3. Continue Learning / Watching */}
+          {watchHistory && watchHistory.length > 0 && (
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-2 rounded-xl bg-red-50 dark:bg-red-950 text-red-600">
+                    <Video className="w-4 h-4" />
+                  </span>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Continue Watching & Learning</h2>
+                </div>
+                <button
+                  onClick={() => navigate('/youtube')}
+                  className="text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Explore More</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {watchHistory.slice(0, 2).map((item) => (
+                  <div
+                    key={item.videoId}
+                    onClick={() => navigate(`/youtube/${item.videoId}?topic=${encodeURIComponent(item.topic || '')}`)}
+                    className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 flex items-center gap-3 hover:border-red-400 transition cursor-pointer"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0">
+                      <Play className="w-5 h-5 text-red-600 fill-current" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.title || item.topic}</h4>
+                      <p className="text-[11px] text-slate-500 truncate">{item.channelTitle || 'Educational Channel'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => navigate('/teacher')}
-          className="px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition flex items-center gap-2 shadow-lg shadow-blue-500/30 shrink-0 cursor-pointer"
-        >
-          <Play className="w-4 h-4 fill-current" />
-          <span>Launch AI Classroom</span>
-        </button>
+
+        {/* Right Column: Today's Plan, Spaced Repetition Due, Weak Areas Radar */}
+        <div className="space-y-6">
+          
+          {/* Today's Personalized Study Plan */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
+                  <Target className="w-4 h-4" />
+                </span>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Today's Plan</h2>
+              </div>
+              <button
+                onClick={() => navigate('/study-plan')}
+                className="text-xs font-bold text-blue-600 dark:text-cyan-400 hover:underline"
+              >
+                Full Plan
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(studyPlan?.tasks || []).slice(0, 3).map((task) => (
+                <div
+                  key={task.id}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between text-xs gap-3"
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(task.completed)}
+                      onChange={() => handleToggleTask(task.id, task.completed)}
+                      className="w-4 h-4 rounded-md text-blue-600 focus:ring-0 cursor-pointer"
+                    />
+                    <div className="truncate">
+                      <span className={`font-semibold ${task.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-200'}`}>
+                        {task.concept}
+                      </span>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{task.activityType} • {task.estimatedMinutes}m</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {(!studyPlan?.tasks || studyPlan.tasks.length === 0) && (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center space-y-2">
+                  <p className="text-xs text-slate-500">No active study plan generated yet.</p>
+                  <button
+                    onClick={() => navigate('/study-plan')}
+                    className="px-4 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-bold"
+                  >
+                    Generate AI Plan
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Spaced Repetition Due */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600">
+                  <RotateCcw className="w-4 h-4" />
+                </span>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">Revision Due</h2>
+                  <p className="text-xs text-slate-500">{dueReviews.length} SM-2 flashcard(s) due today</p>
+                </div>
+              </div>
+            </div>
+
+            {dueReviews.length > 0 ? (
+              <div className="space-y-2">
+                {dueReviews.slice(0, 2).map((item, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200/50 dark:border-purple-800/40 flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{item.concept}</span>
+                    <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">Due Now</span>
+                  </div>
+                ))}
+                <button
+                  onClick={() => navigate('/revision')}
+                  className="w-full mt-2 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Start Due Revision ({dueReviews.length})</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-slate-500">
+                🎉 All spaced reviews completed for today!
+              </div>
+            )}
+          </div>
+
+          {/* Weak Concepts Radar */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-500">
+                <Brain className="w-4 h-4" />
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Weak Concepts Radar</h2>
+                <p className="text-xs text-slate-500">Automated diagnostic gap detection</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(a.weakestConcepts && a.weakestConcepts.length > 0) ? (
+                a.weakestConcepts.map((c, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{c.concept}</span>
+                      <p className="text-[10px] text-slate-400">{c.subject}</p>
+                    </div>
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">{c.score}%</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-2">No critical weak concepts detected yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* AI Learning Insights */}
+          <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-cyan-400">
+              DATA-DRIVEN INSIGHT
+            </span>
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+              {a.insights?.[0] || 'Maintain consistent daily reviews to cement long-term conceptual retention.'}
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   );

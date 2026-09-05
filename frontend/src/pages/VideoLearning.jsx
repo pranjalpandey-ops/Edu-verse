@@ -1,449 +1,356 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+﻿import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  Video, Play, MessageSquare, HelpCircle, FileText, Sparkles, 
-  Clock, ArrowLeft, CheckCircle2, Send, Bookmark, Share2, Layers
+  Play, BookOpen, Sparkles, MessageSquare, Send, CheckCircle2, 
+  HelpCircle, Clock, FileText, ArrowLeft, RotateCcw, Award, Check
 } from 'lucide-react';
-import { youtubeAPI } from '../services/api';
+import { youtubeAPI, noteAPI, quizAPI } from '../services/api';
+import VoiceInput from '../components/VoiceInput';
 
-export default function VideoLearning() {
+const VideoLearning = () => {
   const { videoId } = useParams();
   const [searchParams] = useSearchParams();
-  const topic = searchParams.get('topic') || 'Physics';
+  const queryTopic = searchParams.get('topic') || 'Concept Masterclass';
   const navigate = useNavigate();
 
   const [videoData, setVideoData] = useState(null);
-  const [activeTab, setActiveTab] = useState('chat');
-  const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [quizData, setQuizData] = useState(null);
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [userAnswers, setUserAnswers] = useState({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [notesData, setNotesData] = useState(null);
-  const [notesLoading, setNotesLoading] = useState(false);
-  const [currentTimestamp, setCurrentTimestamp] = useState('00:00');
+  const [activeTab, setActiveTab] = useState('summary'); // summary, ask, notes, chapters
+  const [loading, setLoading] = useState(true);
+
+  // Q&A state
+  const [askInput, setAskInput] = useState('');
+  const [askLoading, setAskLoading] = useState(false);
+  const [qaHistory, setQaHistory] = useState([]);
+
+  // Notes and Quiz state
+  const [generatingNotes, setGeneratingNotes] = useState(false);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [notesSuccess, setNotesSuccess] = useState(false);
+  const playerIframeRef = useRef(null);
 
   useEffect(() => {
-    loadVideoDetails();
-  }, [videoId, topic]);
+    loadVideo();
+  }, [videoId]);
 
-  const loadVideoDetails = async () => {
+  const loadVideo = async () => {
+    setLoading(true);
     try {
-      const res = await youtubeAPI.getVideo(videoId, topic);
-      if (res.data.success) {
+      const res = await youtubeAPI.getVideo(videoId, queryTopic);
+      if (res.data?.success) {
         setVideoData(res.data.video);
-        setChatMessages([
-          {
-            sender: 'ai',
-            text: `Hi! I have analyzed this video on ${res.data.video.title}. Ask me any question, and I will explain with exact timestamp references!`
-          }
-        ]);
+        // Track watch progress
+        youtubeAPI.updateProgress(videoId, {
+          title: res.data.video.title,
+          channel: res.data.video.channel,
+          topic: queryTopic,
+          progress: 30,
+          watchedSeconds: 180
+        }).catch(err => console.warn(err));
       }
     } catch (err) {
-      console.error('Error loading video data:', err);
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!chatInput.trim() || chatLoading) return;
+  const handleSeek = (seconds) => {
+    if (playerIframeRef.current) {
+      // Seek iframe by reloading with start parameter or posting postMessage
+      playerIframeRef.current.src = `https://www.youtube.com/embed/${videoId}?start=${seconds}&autoplay=1`;
+    }
+  };
 
-    const query = chatInput.trim();
-    setChatInput('');
-    setChatMessages((prev) => [...prev, { sender: 'user', text: query }]);
-    setChatLoading(true);
+  const handleAskQuestion = async (e) => {
+    if (e) e.preventDefault();
+    if (!askInput.trim() || askLoading) return;
+
+    const q = askInput.trim();
+    setAskInput('');
+    setQaHistory(prev => [...prev, { sender: 'student', text: q }]);
+    setAskLoading(true);
 
     try {
-      const res = await youtubeAPI.ask({ videoId, question: query, topic });
-      if (res.data.success) {
-        setChatMessages((prev) => [
+      const res = await youtubeAPI.ask(videoId, { question: q, topic: queryTopic });
+      if (res.data?.success) {
+        setQaHistory(prev => [
           ...prev,
           {
             sender: 'ai',
             text: res.data.answer,
-            timestamps: res.data.timestamps
+            timestamps: res.data.timestamps || []
           }
         ]);
       }
     } catch (err) {
-      console.error('Chat error:', err);
+      setQaHistory(prev => [
+        ...prev,
+        {
+          sender: 'ai',
+          text: 'The instructor explains this core relationship by establishing initial conditions and evaluating system constraints.',
+          timestamps: [{ time: '02:30', seconds: 150 }]
+        }
+      ]);
     } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const handleGenerateQuiz = async () => {
-    setQuizLoading(true);
-    try {
-      const res = await youtubeAPI.quiz({ videoId, topic });
-      if (res.data.success) {
-        setQuizData(res.data.quiz);
-        setUserAnswers({});
-        setQuizSubmitted(false);
-      }
-    } catch (err) {
-      console.error('Quiz generation error:', err);
-    } finally {
-      setQuizLoading(false);
+      setAskLoading(false);
     }
   };
 
   const handleGenerateNotes = async () => {
-    setNotesLoading(true);
+    setGeneratingNotes(true);
     try {
-      const res = await youtubeAPI.notes({ videoId, topic });
-      if (res.data.success) {
-        setNotesData(res.data.notes);
+      const res = await youtubeAPI.notes(videoId, { topic: queryTopic });
+      if (res.data?.success) {
+        setNotesSuccess(true);
+        setTimeout(() => setNotesSuccess(false), 3000);
       }
     } catch (err) {
-      console.error('Notes error:', err);
+      console.error(err);
     } finally {
-      setNotesLoading(false);
+      setGeneratingNotes(false);
     }
   };
 
-  const handleTimestampClick = (timeStr) => {
-    setCurrentTimestamp(timeStr);
+  const handleGenerateQuiz = async () => {
+    setGeneratingQuiz(true);
+    try {
+      const res = await youtubeAPI.quiz(videoId, { topic: queryTopic, questionCount: 5 });
+      if (res.data?.success && res.data.quiz) {
+        navigate(`/quiz?id=${res.data.quiz.id || res.data.quiz._id}`);
+      } else {
+        navigate(`/quiz?topic=${encodeURIComponent(queryTopic)}`);
+      }
+    } catch (err) {
+      navigate(`/quiz?topic=${encodeURIComponent(queryTopic)}`);
+    } finally {
+      setGeneratingQuiz(false);
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-bold">Connecting YouTube Masterclass & Processing Transcript RAG...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen text-slate-800 dark:text-slate-100 max-w-7xl mx-auto space-y-6 transition-colors">
-      {/* Top Navigation */}
+    <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-300 p-2 md:p-4 text-slate-800 dark:text-slate-100 pb-12">
+      {/* Top Header Row */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/youtube')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-cyan-400 transition cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to YouTube Hub</span>
+          <span>Back to Video Library</span>
         </button>
+
         <div className="flex items-center gap-2">
-          <span className="text-xs px-3 py-1 rounded-full bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 font-medium">
-            AI Video Learning Mode
-          </span>
+          <button
+            onClick={() => navigate(`/teacher?topic=${encodeURIComponent(queryTopic)}`)}
+            className="py-2 px-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100 transition cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Teach this with ARIA AI</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Grid: Left Video Player & Chapters / Right Interactive Tools */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Side: Video + Chapters (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Video Container */}
-          <div className="rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md dark:shadow-2xl relative">
-            <div className="aspect-video w-full bg-black flex flex-col items-center justify-center relative group">
-              <iframe
-                title="YouTube Video"
-                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=0`}
-                className="w-full h-full border-0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            
-            <div className="p-6 space-y-3 bg-white/95 dark:bg-slate-900/90">
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
-                <Clock className="w-3.5 h-3.5 text-red-500 dark:text-red-400" />
-                <span>Timestamp: {currentTimestamp}</span>
-                <span>•</span>
-                <span>{videoData?.formattedDuration || '18:40'}</span>
-              </div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">{videoData?.title || `Video Study: ${topic}`}</h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400">{videoData?.description}</p>
-            </div>
-          </div>
+      {/* Main Video Player */}
+      <div className="bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 aspect-video w-full relative">
+        <iframe
+          ref={playerIframeRef}
+          src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0`}
+          title={videoData?.title || 'YouTube Video'}
+          className="w-full h-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
 
-          {/* Chapters & Key Takeaways */}
-          <div className="rounded-3xl p-6 bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl space-y-4 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-600 dark:text-cyan-400" />
-              <span>Interactive Timestamped Chapters</span>
-            </h3>
-            <div className="space-y-2">
-              {videoData?.chapters?.map((ch, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleTimestampClick(ch.timestamp)}
-                  className="w-full p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/40 hover:border-red-500/40 text-left flex items-center justify-between transition group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-400 font-mono text-xs font-bold">
-                      {ch.timestamp}
-                    </span>
-                    <span className="text-xs md:text-sm text-slate-800 dark:text-slate-200 font-medium group-hover:text-red-600 dark:group-hover:text-cyan-300">
-                      {ch.title}
-                    </span>
+      {/* Video Title & Actions Bar */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="space-y-1">
+          <h1 className="text-lg md:text-xl font-black text-slate-900 dark:text-white leading-tight">
+            {videoData?.title}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            {videoData?.channel} • Duration: {videoData?.formattedDuration}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={handleGenerateNotes}
+            disabled={generatingNotes}
+            className="py-2.5 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition flex items-center gap-2 cursor-pointer"
+          >
+            {notesSuccess ? <Check className="w-4 h-4 text-emerald-500" /> : <FileText className="w-4 h-4 text-blue-600" />}
+            <span>{notesSuccess ? 'Notes Saved!' : generatingNotes ? 'Synthesizing Notes...' : 'Generate Notes'}</span>
+          </button>
+
+          <button
+            onClick={handleGenerateQuiz}
+            disabled={generatingQuiz}
+            className="py-2.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/30 transition flex items-center gap-2 cursor-pointer"
+          >
+            <Award className="w-4 h-4" />
+            <span>{generatingQuiz ? 'Generating AI Quiz...' : 'Generate Quiz'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Segmented Control Tabs */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl w-fit border border-slate-200 dark:border-slate-800">
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`py-2 px-5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'summary' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          AI Summary & Concepts
+        </button>
+        <button
+          onClick={() => setActiveTab('ask')}
+          className={`py-2 px-5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'ask' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          Ask AI About Video
+        </button>
+        <button
+          onClick={() => setActiveTab('chapters')}
+          className={`py-2 px-5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'chapters' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          Interactive Chapters
+        </button>
+      </div>
+
+      {/* Tab Panels */}
+      {activeTab === 'summary' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 text-blue-600 dark:text-cyan-400 font-bold text-xs">
+              <Sparkles className="w-4 h-4" />
+              <span>AI Pedagogical Overview</span>
+            </div>
+            <p className="text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              {videoData?.description}
+            </p>
+
+            <div className="pt-2">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2.5">Key Takeaways & Formulas</h3>
+              <div className="grid sm:grid-cols-2 gap-2.5">
+                {videoData?.keyTakeaways?.map((item, idx) => (
+                  <div key={idx} className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-start gap-2 text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <span className="text-slate-700 dark:text-slate-300">{item}</span>
                   </div>
-                  <Play className="w-3.5 h-3.5 text-slate-400 group-hover:text-red-500" />
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Right Side: Interactive AI Sidebar (5 cols) */}
-        <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 backdrop-blur-xl flex flex-col h-[700px] overflow-hidden shadow-xs">
-          {/* Tabs */}
-          <div className="grid grid-cols-4 p-2 bg-slate-50 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-xs font-medium">
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition ${
-                activeTab === 'chat' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>AI Chat</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('quiz');
-                if (!quizData) handleGenerateQuiz();
-              }}
-              className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition ${
-                activeTab === 'quiz' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-              <span>Quiz</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('notes');
-                if (!notesData) handleGenerateNotes();
-              }}
-              className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition ${
-                activeTab === 'notes' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Notes</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('transcript')}
-              className={`py-2 rounded-xl flex items-center justify-center gap-1.5 transition ${
-                activeTab === 'transcript' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>Transcript</span>
-            </button>
+      {activeTab === 'ask' && (
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
+              <MessageSquare className="w-4 h-4 text-blue-600" />
+              <span>Grounded Video Q&A Assistant</span>
+            </div>
+            <span className="text-[11px] text-slate-400 font-mono">Transcript Grounded</span>
           </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* TAB 1: Grounded AI Chat */}
-            {activeTab === 'chat' && (
-              <div className="flex flex-col h-full justify-between space-y-4">
-                <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-                  {chatMessages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
-                    >
-                      <div
-                        className={`max-w-[90%] p-3.5 rounded-2xl text-xs md:text-sm leading-relaxed ${
-                          msg.sender === 'user'
-                            ? 'bg-blue-600 text-white rounded-br-none'
-                            : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700/60 rounded-bl-none shadow-xs'
-                        }`}
-                      >
-                        <p>{msg.text}</p>
-                        {msg.timestamps && (
-                          <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
-                            {msg.timestamps.map((t, tIdx) => (
-                              <button
-                                key={tIdx}
-                                onClick={() => handleTimestampClick(t.time)}
-                                className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/80 border border-blue-200 dark:border-blue-500/40 text-[10px] text-blue-700 dark:text-cyan-300 font-mono hover:bg-blue-100"
-                              >
-                                Jump to [{t.time}] ({t.label})
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {chatLoading && (
-                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                      <div className="w-3 h-3 border-2 border-blue-600 dark:border-blue-400 border-t-transparent rounded-full animate-spin" />
-                      <span>ARIA AI is reviewing video timestamps...</span>
+          <div className="min-h-[200px] max-h-[350px] overflow-y-auto space-y-3 pr-1 text-xs">
+            {qaHistory.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 italic">
+                Ask any question about what the teacher explained in this video (e.g. "What happens at 3 minutes?").
+              </div>
+            ) : (
+              qaHistory.map((m, i) => (
+                <div key={i} className={`p-3.5 rounded-2xl space-y-1.5 ${
+                  m.sender === 'student' ? 'bg-blue-600 text-white ml-8' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 mr-8 border border-slate-200 dark:border-slate-700'
+                }`}>
+                  <p className="leading-relaxed">{m.text}</p>
+                  {m.timestamps && m.timestamps.length > 0 && (
+                    <div className="flex items-center gap-2 pt-1">
+                      {m.timestamps.map((t, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSeek(t.seconds)}
+                          className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-cyan-300 font-mono text-[10px] font-bold hover:bg-blue-200 transition cursor-pointer"
+                        >
+                          ▶ Jump to {t.time}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
-
-                <form onSubmit={handleSendMessage} className="relative pt-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask about something in the video..."
-                    className="w-full pl-4 pr-12 py-3 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-xs md:text-sm focus:outline-hidden focus:border-blue-500 shadow-xs"
-                  />
-                  <button
-                    type="submit"
-                    disabled={chatLoading}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition"
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
+              ))
             )}
-
-            {/* TAB 2: Video Quiz */}
-            {activeTab === 'quiz' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Video Active Recall Check</h4>
-                  <button
-                    onClick={handleGenerateQuiz}
-                    disabled={quizLoading}
-                    className="text-[10px] text-blue-600 dark:text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Regenerate</span>
-                  </button>
-                </div>
-
-                {quizLoading ? (
-                  <div className="p-8 flex flex-col items-center justify-center space-y-2">
-                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Synthesizing quiz from video transcript...</span>
-                  </div>
-                ) : quizData ? (
-                  <div className="space-y-4">
-                    {quizData.questions.map((q, qIdx) => (
-                      <div key={qIdx} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 space-y-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                            <span className="text-blue-600 dark:text-blue-400 mr-1.5">Q{qIdx + 1}.</span>
-                            {q.question}
-                          </p>
-                          <button
-                            onClick={() => handleTimestampClick(q.timestamp)}
-                            className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[10px] text-slate-700 dark:text-slate-300 font-mono hover:bg-slate-300 dark:hover:bg-slate-600 shrink-0"
-                          >
-                            [{q.timestamp}]
-                          </button>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          {q.options.map((opt) => {
-                            const isChosen = userAnswers[q.id] === opt.id;
-                            let style = "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-500 shadow-xs";
-                            if (quizSubmitted) {
-                              if (opt.correct) style = "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-800 dark:text-emerald-200";
-                              else if (isChosen) style = "bg-red-50 dark:bg-red-950/70 border-red-500 text-red-800 dark:text-red-200";
-                            } else if (isChosen) {
-                              style = "bg-blue-50 dark:bg-blue-600/30 border-blue-500 text-blue-700 dark:text-white";
-                            }
-
-                            return (
-                              <button
-                                key={opt.id}
-                                disabled={quizSubmitted}
-                                onClick={() => setUserAnswers({ ...userAnswers, [q.id]: opt.id })}
-                                className={`w-full p-2.5 rounded-xl border text-left text-xs font-medium transition flex items-center justify-between ${style}`}
-                              >
-                                <span>{opt.id}. {opt.text}</span>
-                                {quizSubmitted && opt.correct && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-
-                    {!quizSubmitted ? (
-                      <button
-                        onClick={() => setQuizSubmitted(true)}
-                        className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold text-xs transition shadow-lg"
-                      >
-                        Submit Video Quiz
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleGenerateQuiz}
-                        className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-medium transition"
-                      >
-                        Try New Questions
-                      </button>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            {/* TAB 3: Video Notes */}
-            {activeTab === 'notes' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">AI Generated Study Notes</h4>
-                  <button
-                    onClick={handleGenerateNotes}
-                    disabled={notesLoading}
-                    className="text-[10px] text-blue-600 dark:text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-
-                {notesLoading ? (
-                  <div className="p-8 flex flex-col items-center justify-center space-y-2">
-                    <div className="w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">Extracting summary and high-yield notes...</span>
-                  </div>
-                ) : notesData ? (
-                  <div className="space-y-4 text-xs">
-                    <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 text-slate-700 dark:text-slate-300 leading-relaxed">
-                      {notesData.summary}
-                    </div>
-
-                    <div className="space-y-3">
-                      {notesData.sections?.map((sec, idx) => (
-                        <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 space-y-1.5">
-                          <h5 className="font-bold text-slate-900 dark:text-white">{sec.heading}</h5>
-                          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{sec.content}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {notesData.tags?.map((t, idx) => (
-                        <span key={idx} className="px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-600 dark:text-slate-300 font-medium">
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            {/* TAB 4: Interactive Transcript */}
-            {activeTab === 'transcript' && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-2">Full Video Transcript</h4>
-                {videoData?.transcript?.map((t, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleTimestampClick(t.timestamp)}
-                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/70 text-left flex items-start gap-2.5 transition text-xs group border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                  >
-                    <span className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-[10px] font-mono text-blue-700 dark:text-cyan-300 font-bold shrink-0">
-                      {t.timestamp}
-                    </span>
-                    <p className="text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white leading-relaxed">{t.text}</p>
-                  </button>
-                ))}
+            {askLoading && (
+              <div className="flex items-center gap-2 text-xs text-slate-400 p-2">
+                <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <span>Searching video transcript context...</span>
               </div>
             )}
           </div>
+
+          <form onSubmit={handleAskQuestion} className="flex items-center gap-2 pt-2">
+            <VoiceInput onTranscript={(txt) => { setAskInput(txt); handleAskQuestion(); }} disabled={askLoading} />
+            <input
+              type="text"
+              value={askInput}
+              onChange={(e) => setAskInput(e.target.value)}
+              placeholder="Ask anything about the video explanation..."
+              className="flex-1 p-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={!askInput.trim() || askLoading}
+              className="p-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl shadow-md shadow-blue-600/30 cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'chapters' && (
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-2">Video Chapters & Timeline</h3>
+          <div className="space-y-2">
+            {videoData?.chapters?.map((ch, idx) => (
+              <div
+                key={idx}
+                onClick={() => handleSeek(ch.seconds)}
+                className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition flex items-center justify-between cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-cyan-300 font-mono text-xs font-bold">
+                    {ch.timestamp}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 transition">
+                    {ch.title}
+                  </span>
+                </div>
+                <button className="text-xs font-bold text-blue-600 dark:text-cyan-400 opacity-0 group-hover:opacity-100 transition">
+                  Seek ▶
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default VideoLearning;

@@ -7,31 +7,32 @@ const ragPipeline = require('../rag/ragPipeline');
 
 exports.generateLesson = async (req, res) => {
   try {
-    const { topic, documentId, level, knowledgeLevel, language, time, goal, style, depth } = req.body;
-    const userId = req.user ? req.user._id : 'user_pranjal_demo';
+    const { topic = 'Photosynthesis and Energy Systems', documentId, level, knowledgeLevel, language, time, goal, style, depth } = req.body;
+    const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
 
     let ragContext = null;
     if (documentId) {
-      ragContext = await ragPipeline.buildGroundedPrompt(topic || 'core overview', documentId);
+      ragContext = await ragPipeline.buildGroundedPrompt(topic, documentId);
     }
 
     const plan = await lessonPlanner.generateLessonPlan({
-      topic: topic || 'Physics: Electricity and Magnetism',
+      topic,
       documentId,
       level: level || 'High School',
       knowledgeLevel: knowledgeLevel || 'Beginner',
       language: language || 'English',
       time: time || 20,
-      goal: goal || 'Exam Preparation',
-      style: style || 'Simple Examples',
-      depth: depth || 'Standard'
+      goal: goal || 'Exam Preparation & Mastery',
+      style: style || 'Intuitive Analogies & Math',
+      depth: depth || 'Standard',
+      ragContext
     });
 
     const lesson = await Lesson.create({
       userId,
-      title: plan.title || topic,
-      topic: topic || 'Electricity',
-      subject: 'Physics',
+      title: plan.title || `${topic}: Conceptual & Practical Mastery`,
+      topic: plan.topic || topic,
+      subject: plan.subject || 'Academic Mastery',
       duration: plan.duration || 20,
       language: plan.language || language || 'English',
       difficulty: knowledgeLevel || 'Beginner',
@@ -39,7 +40,7 @@ exports.generateLesson = async (req, res) => {
       sections: plan.sections || [],
       currentSectionIndex: 0,
       progress: 0,
-      thumbnail: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=600&q=80'
+      thumbnail: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80'
     });
 
     res.status(201).json({ success: true, lesson });
@@ -55,6 +56,9 @@ exports.getLesson = async (req, res) => {
     if (!lesson) {
       lesson = await Lesson.findOne({});
     }
+    if (!lesson) {
+      return res.status(404).json({ success: false, message: 'Lesson not found' });
+    }
     res.json({ success: true, lesson });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -64,18 +68,22 @@ exports.getLesson = async (req, res) => {
 exports.startLessonSession = async (req, res) => {
   try {
     const lesson = await Lesson.findById(req.params.id) || await Lesson.findOne({});
-    const userId = req.user ? req.user._id : 'user_pranjal_demo';
+    if (!lesson) {
+      return res.status(404).json({ success: false, message: 'No lesson found to start session' });
+    }
+
+    const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
 
     const session = await LessonSession.create({
-      lessonId: lesson ? lesson._id : 'lesson_physics_electricity',
+      lessonId: lesson._id,
       userId,
-      currentSectionIndex: 2, // Default to Ohm's Law section for hackathon demo
-      mastery: 70,
-      difficulty: lesson ? lesson.difficulty : 'Beginner',
-      language: lesson ? lesson.language : 'English',
+      currentSectionIndex: 0,
+      mastery: 50,
+      difficulty: lesson.difficulty || 'Beginner',
+      language: lesson.language || 'English',
       explanationStyle: 'diagram',
-      elapsedSeconds: 360,
-      totalSeconds: (lesson ? lesson.duration : 20) * 60
+      elapsedSeconds: 0,
+      totalSeconds: (lesson.duration || 20) * 60
     });
 
     res.json({ success: true, session, lesson });
@@ -88,20 +96,19 @@ exports.answerQuestion = async (req, res) => {
   try {
     const { questionId, answer, questionText, options, concept } = req.body;
     const lessonId = req.params.id;
-    const userId = req.user ? req.user._id : 'user_pranjal_demo';
+    const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
 
     const questionObj = {
-      id: questionId,
-      question: questionText || "If voltage remains constant and resistance increases, what happens to current?",
+      id: questionId || 'q1',
+      concept: concept || 'Core Concept',
+      question: questionText || `Evaluate the primary mechanism governing ${concept || 'this system'}.`,
       options: options || [
-        { id: "A", text: "It increases proportionally.", correct: false },
-        { id: "B", text: "It decreases.", correct: true },
-        { id: "C", text: "It remains the same.", correct: false },
-        { id: "D", text: "It fluctuates unpredictably.", correct: false }
+        { id: "A", text: "Directly satisfies the governing principle.", correct: true },
+        { id: "B", text: "Violates the core relationship.", correct: false }
       ]
     };
 
-    const diagnosis = misconceptionDetector.diagnoseAnswer(questionObj, answer, concept || "Ohm's Law");
+    const diagnosis = misconceptionDetector.diagnoseAnswer(questionObj, answer, concept || questionObj.concept);
 
     if (!diagnosis.correct && diagnosis.misconception) {
       await Misconception.create({
@@ -127,15 +134,17 @@ exports.answerQuestion = async (req, res) => {
 
 exports.adaptTeaching = async (req, res) => {
   try {
-    const { action, language, style } = req.body;
-    let note = "Teaching adapted.";
+    const { action, language, style, concept = 'this topic' } = req.body;
+    let note = "Teaching adapted dynamically to student learning pace.";
 
     if (action === 'switch_language') {
-      note = `Teacher switched language to ${language} seamlessly.`;
+      note = `Teacher switched language to ${language || 'English'} seamlessly.`;
     } else if (action === 'simplify') {
-      note = "ARIA simplified the explanation with a real-world visual breakdown.";
+      note = `ARIA simplified ${concept} with a foundational intuitive breakdown.`;
     } else if (action === 'example') {
-      note = "ARIA deployed a real-world water-pipe analogy.";
+      note = `ARIA provided a step-by-step real-world application of ${concept}.`;
+    } else if (action === 'analogy') {
+      note = `ARIA deployed a memorable cognitive analogy for ${concept}.`;
     }
 
     res.json({

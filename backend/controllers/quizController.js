@@ -1,110 +1,336 @@
-const { Quiz, QuizRoom } = require('../models');
+const { Quiz, QuizAttempt, QuizRoom, ConceptMastery, LearningProgress, Material, Lesson, DocumentChunk } = require('../models');
 const aiService = require('../services/aiService');
+const ragPipeline = require('../rag/ragPipeline');
 const misconceptionDetector = require('../ai/misconceptionDetector');
 
 class QuizController {
   async generateQuiz(req, res) {
     try {
-      const { topic = 'Universal Science', difficulty = 'Medium', count = 5, category = 'General' } = req.body;
-      const cleanTopic = topic.charAt(0).toUpperCase() + topic.slice(1);
-      const questionCount = Math.min(Math.max(parseInt(count) || 5, 3), 15);
+      const {
+        topic = 'Foundational Science & Technology',
+        subject = 'General Studies',
+        lessonId = null,
+        materialId = null,
+        videoId = null,
+        difficulty = 'medium',
+        questionCount = 5,
+        language = 'English',
+        questionTypes = ['mcq', 'true_false', 'short_answer']
+      } = req.body;
 
-      const questions = [];
-      for (let i = 1; i <= questionCount; i++) {
-        questions.push({
-          id: `q_${i}`,
-          questionNumber: i,
-          type: 'MCQ',
-          concept: `${cleanTopic} - Key Concept ${i}`,
-          question: i === 1
-            ? `Which foundational principle dictates the core mechanism of ${cleanTopic}?`
-            : i === 2
-            ? `In ${cleanTopic}, what is the direct consequence of increasing system constraints under constant driving force?`
-            : i === 3
-            ? `Which formula or analytical model accurately describes the relationship between variables in ${cleanTopic}?`
-            : `How does optimizing boundary parameters in ${cleanTopic} impact practical real-world efficiency?`,
-          options: [
-            { id: 'A', text: i % 2 === 1 ? `Standard governed balance between inputs and throughput in ${cleanTopic}` : `Throughput decreases proportionally with increased opposition`, correct: true },
-            { id: 'B', text: `Unconstrained exponential increase without energy input`, correct: false },
-            { id: 'C', text: `Random behavior independent of initial parameters`, correct: false },
-            { id: 'D', text: `Completely static state that cannot be modified`, correct: false }
-          ],
-          explanation: `In ${cleanTopic}, outcomes are strictly bounded by fundamental laws and input-to-resistance proportions.`
-        });
+      const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
+      const count = Math.min(Math.max(parseInt(questionCount) || 5, 3), 15);
+      const cleanTopic = topic.trim();
+
+      // Retrieve RAG context if materialId or lessonId exists
+      let ragContext = null;
+      if (materialId) {
+        ragContext = await ragPipeline.buildGroundedPrompt(cleanTopic, materialId);
+      } else if (lessonId) {
+        const lesson = await Lesson.findById(lessonId);
+        if (lesson && lesson.sections) {
+          const text = lesson.sections.map(s => `${s.title}: ${s.explanation}`).join('\n\n');
+          ragContext = { hasContext: true, groundedContext: text };
+        }
       }
 
-      const quizData = {
+      // Generate questions with AI
+      const questions = await aiService.generateQuizQuestions({
+        topic: cleanTopic,
+        subject,
+        difficulty,
+        questionCount: count,
+        language,
+        questionTypes,
+        ragContext
+      });
+
+      // Save full quiz with answers to Database
+      const quiz = await Quiz.create({
+        userId,
         title: `${cleanTopic} Mastery Challenge`,
         topic: cleanTopic,
-        category,
+        subject,
+        description: `Adaptive ${difficulty} quiz testing core concepts of ${cleanTopic}.`,
+        sourceType: materialId ? 'material' : videoId ? 'video' : lessonId ? 'lesson' : 'topic',
+        sourceId: materialId || videoId || lessonId || null,
         difficulty,
-        timeLimit: questionCount * 60, // seconds
-        totalQuestions: questionCount,
+        questionCount: questions.length,
+        timeLimit: questions.length * 60,
+        language,
         questions,
-        createdBy: req.user ? req.user.id : 'ai_system',
+        isLive: false,
         createdAt: new Date().toISOString()
-      };
+      });
 
-      return res.json({ success: true, quiz: quizData });
+      // Return sanitized quiz to client (NO answers or explanations exposed!)
+      const safeQuestions = questions.map(q => ({
+        id: q.id,
+        question: q.question,
+        type: q.type || 'mcq',
+        concept: q.concept || cleanTopic,
+        difficulty: q.difficulty || difficulty,
+        options: q.options ? q.options.map(opt => ({ id: opt.id, text: opt.text })) : undefined
+      }));
+
+      return res.status(201).json({
+        success: true,
+        quiz: {
+          id: quiz._id,
+          title: quiz.title,
+          topic: quiz.topic,
+          subject: quiz.subject,
+          description: quiz.description,
+          difficulty: quiz.difficulty,
+          questionCount: quiz.questionCount,
+          timeLimit: quiz.timeLimit,
+          language: quiz.language,
+          questions: safeQuestions
+        }
+      });
     } catch (error) {
       console.error('[QuizController] generateQuiz error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  async submitQuiz(req, res) {
+  async getQuizById(req, res) {
     try {
-      const { quizId, topic = 'Topic Mastery', answers = [], timeSpent = 60 } = req.body;
-      
-      let correctCount = 0;
-      const feedbackList = [];
-      let totalMasteryGain = 0;
+      const quizId = req.params.quizId || req.params.id;
+      const quiz = await Quiz.findById(quizId);
+      if (!quiz) {
+        return res.status(404).json({ success: false, message: 'Quiz not found' });
+      }
 
-      answers.forEach((ans, idx) => {
-        const isCorrect = ans.isCorrect !== undefined ? ans.isCorrect : (ans.selectedOption === 'A' || ans.correct === true);
-        if (isCorrect) {
-          correctCount++;
-          totalMasteryGain += 15;
-          feedbackList.push({
-            questionId: ans.questionId || `q_${idx + 1}`,
-            correct: true,
-            feedback: 'Excellent work! Your answer matches first principles.'
-          });
-        } else {
-          totalMasteryGain = Math.max(0, totalMasteryGain - 5);
-          const diag = misconceptionDetector.diagnoseAnswer(
-            { question: ans.questionText || 'Concept Question', options: [{ id: 'A', correct: true }] },
-            ans.selectedOption || 'B',
-            topic
-          );
-          feedbackList.push({
-            questionId: ans.questionId || `q_${idx + 1}`,
-            correct: false,
-            misconception: diag.misconception,
-            remedialExplanation: diag.remedialExplanation,
-            followUpQuestion: diag.followUpQuestion,
-            feedback: diag.feedback
-          });
+      // Sanitize questions
+      const safeQuestions = (quiz.questions || []).map(q => ({
+        id: q.id,
+        question: q.question,
+        type: q.type || 'mcq',
+        concept: q.concept || quiz.topic,
+        difficulty: q.difficulty || quiz.difficulty,
+        options: q.options ? q.options.map(opt => ({ id: opt.id, text: opt.text })) : undefined
+      }));
+
+      return res.json({
+        success: true,
+        quiz: {
+          id: quiz._id,
+          title: quiz.title,
+          topic: quiz.topic,
+          subject: quiz.subject,
+          description: quiz.description,
+          difficulty: quiz.difficulty,
+          questionCount: quiz.questionCount,
+          timeLimit: quiz.timeLimit,
+          language: quiz.language,
+          questions: safeQuestions
         }
       });
+    } catch (error) {
+      console.error('[QuizController] getQuizById error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
 
-      const totalQuestions = answers.length || 5;
+  async submitQuiz(req, res) {
+    try {
+      const quizId = req.params.quizId || req.body.quizId;
+      const { answers = [], timeTaken = 60 } = req.body;
+      const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
+
+      const quiz = await Quiz.findById(quizId);
+      const questions = quiz ? quiz.questions : [];
+      const topic = quiz ? quiz.topic : (req.body.topic || 'General Mastery');
+
+      let correctCount = 0;
+      let incorrectCount = 0;
+      const conceptResults = {};
+      const feedbackList = [];
+
+      for (let i = 0; i < (questions.length > 0 ? questions.length : answers.length); i++) {
+        const q = questions[i] || {};
+        const qId = q.id || `q${i + 1}`;
+        const studentAnsObj = answers.find(a => a.questionId === qId) || answers[i] || {};
+        const studentAnswer = (studentAnsObj.answer !== undefined ? studentAnsObj.answer : studentAnsObj.selectedOption || '').toString().trim();
+        const concept = q.concept || `${topic} - Concept ${i + 1}`;
+
+        if (!conceptResults[concept]) {
+          conceptResults[concept] = { total: 0, correct: 0 };
+        }
+        conceptResults[concept].total += 1;
+
+        let isCorrect = false;
+        let score = 0;
+        let explanation = q.explanation || 'Matches core first principles.';
+        let misconception = null;
+
+        if (q.type === 'short_answer') {
+          const evalResult = await aiService.evaluateOpenEndedAnswer({
+            question: q.question,
+            studentAnswer,
+            concept,
+            expectedAnswer: q.expectedAnswer
+          });
+          isCorrect = evalResult.correct;
+          score = evalResult.score;
+          explanation = evalResult.feedback;
+          misconception = evalResult.misconception;
+        } else {
+          // MCQ / True_False
+          const correctOpt = (q.options || []).find(o => o.correct === true) || { id: q.correctAnswer || 'A' };
+          const normalizedStudent = studentAnswer.toUpperCase();
+          const normalizedCorrect = (correctOpt.id || 'A').toUpperCase();
+
+          isCorrect = normalizedStudent === normalizedCorrect;
+          score = isCorrect ? 1.0 : 0.0;
+
+          if (!isCorrect) {
+            const diag = misconceptionDetector.diagnoseAnswer(q, studentAnswer, concept);
+            misconception = diag.misconception ? diag.misconception.misconception : null;
+          }
+        }
+
+        if (isCorrect) {
+          correctCount++;
+          conceptResults[concept].correct += 1;
+          feedbackList.push({
+            questionId: qId,
+            questionText: q.question,
+            correct: true,
+            score,
+            studentAnswer,
+            correctAnswer: q.correctAnswer || (q.options ? q.options.find(o => o.correct)?.text : undefined),
+            explanation,
+            concept
+          });
+        } else {
+          incorrectCount++;
+          feedbackList.push({
+            questionId: qId,
+            questionText: q.question,
+            correct: false,
+            score,
+            studentAnswer,
+            correctAnswer: q.correctAnswer || (q.options ? q.options.find(o => o.correct)?.text : undefined),
+            explanation,
+            concept,
+            misconception
+          });
+        }
+      }
+
+      const totalQuestions = Math.max(1, correctCount + incorrectCount);
       const percentage = Math.round((correctCount / totalQuestions) * 100);
 
-      const result = {
-        score: correctCount,
-        totalQuestions,
-        percentage,
-        timeSpent,
-        masteryGain: totalMasteryGain,
-        masteryLevel: percentage >= 80 ? 'Mastered' : percentage >= 60 ? 'Proficient' : 'Developing',
-        feedbackList,
-        submittedAt: new Date().toISOString()
-      };
+      // Classify Strong & Weak concepts
+      const strongConcepts = [];
+      const weakConcepts = [];
+      for (const [cName, data] of Object.entries(conceptResults)) {
+        const cPercent = Math.round((data.correct / data.total) * 100);
+        if (cPercent >= 75) {
+          strongConcepts.push({ concept: cName, score: cPercent });
+        } else {
+          weakConcepts.push({ concept: cName, score: cPercent });
+        }
 
-      return res.json({ success: true, result });
+        // Update ConceptMastery in DB
+        const existingMastery = await ConceptMastery.findOne({ userId, concept: cName });
+        if (existingMastery) {
+          await ConceptMastery.updateOne({ userId, concept: cName }, {
+            masteryScore: Math.round((existingMastery.masteryScore + cPercent) / 2),
+            lastTested: new Date().toISOString()
+          });
+        } else {
+          await ConceptMastery.create({
+            userId,
+            concept: cName,
+            masteryScore: cPercent,
+            status: cPercent >= 75 ? 'mastered' : 'learning',
+            lastTested: new Date().toISOString()
+          });
+        }
+      }
+
+      // Save Quiz Attempt
+      const attempt = await QuizAttempt.create({
+        userId,
+        quizId: quizId || 'direct_quiz',
+        topic,
+        score: correctCount,
+        percentage,
+        totalQuestions,
+        correctCount,
+        incorrectCount,
+        timeTaken,
+        conceptResults: Object.entries(conceptResults).map(([k, v]) => ({ concept: k, ...v })),
+        strongConcepts: strongConcepts.map(s => s.concept),
+        weakConcepts: weakConcepts.map(w => w.concept),
+        feedbackList,
+        completedAt: new Date().toISOString()
+      });
+
+      return res.json({
+        success: true,
+        result: {
+          attemptId: attempt._id,
+          quizId,
+          topic,
+          score: correctCount,
+          totalQuestions,
+          percentage,
+          correctCount,
+          incorrectCount,
+          timeTaken,
+          strongConcepts,
+          weakConcepts,
+          feedbackList,
+          recommendedRevision: weakConcepts.length > 0
+            ? `Review the foundational rules and boundary conditions for ${weakConcepts.map(w => w.concept).join(', ')}.`
+            : `Outstanding mastery! You have scored ${percentage}% across all evaluated concepts.`,
+          recommendedNextLesson: `Deep Dive & Problem Solving: ${topic}`,
+          submittedAt: attempt.completedAt
+        }
+      });
     } catch (error) {
       console.error('[QuizController] submitQuiz error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async generateAdaptiveQuiz(req, res) {
+    try {
+      const { topic = 'Core STEM' } = req.body;
+      const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
+
+      // Inspect student's mastery in this topic
+      const masteries = await ConceptMastery.find({ userId });
+      const avgMastery = masteries.length > 0
+        ? Math.round(masteries.reduce((sum, m) => sum + (m.masteryScore || 50), 0) / masteries.length)
+        : 65;
+
+      let difficulty = 'medium';
+      if (avgMastery >= 80) {
+        difficulty = 'hard';
+      } else if (avgMastery < 50) {
+        difficulty = 'easy';
+      }
+
+      req.body.difficulty = difficulty;
+      req.body.topic = topic;
+      return this.generateQuiz(req, res);
+    } catch (error) {
+      console.error('[QuizController] generateAdaptiveQuiz error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async getAttempts(req, res) {
+    try {
+      const userId = req.user ? (req.user._id || req.user.id) : 'user_pranjal_demo';
+      const attempts = await QuizAttempt.find({ userId });
+      return res.json({ success: true, attempts });
+    } catch (error) {
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -163,27 +389,66 @@ class QuizController {
 
   async createLiveRoom(req, res) {
     try {
-      const { topic = 'Live Battle', difficulty = 'Medium', questionCount = 5 } = req.body;
+      const { topic = 'Live STEM Arena', difficulty = 'Medium', questionCount = 5, quizId = null } = req.body;
       const roomCode = 'EDU-' + Math.floor(1000 + Math.random() * 9000);
+      const userId = req.user ? (req.user._id || req.user.id) : 'host_user';
+      const userName = req.user ? req.user.name : 'Host Professor';
 
-      const room = {
+      const room = await QuizRoom.create({
         roomCode,
+        hostId: userId,
+        quizId: quizId || 'live_quick_quiz',
         topic,
         difficulty,
-        hostId: req.user ? req.user.id : 'host_1',
-        hostName: req.user ? req.user.name : 'Professor AI',
-        status: 'waiting', // waiting, active, finished
+        status: 'waiting', // waiting, started, finished
         questionCount,
-        currentQuestionIndex: 0,
         participants: [
-          { id: 'host_p', name: req.user ? req.user.name : 'Host Player', score: 0, ready: true, isHost: true }
+          { userId, name: userName, score: 0, correct: 0, answered: 0, joinedAt: new Date().toISOString(), connected: true }
         ],
+        currentQuestion: 0,
         createdAt: new Date().toISOString()
-      };
+      });
 
-      return res.json({ success: true, room });
+      return res.status(201).json({ success: true, roomCode, room });
     } catch (error) {
       console.error('[QuizController] createLiveRoom error:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  async joinLiveRoom(req, res) {
+    try {
+      const { roomCode } = req.params;
+      const cleanCode = (roomCode || '').toUpperCase().trim();
+      const userId = req.user ? (req.user._id || req.user.id) : 'guest_' + Math.floor(Math.random() * 1000);
+      const userName = req.user ? req.user.name : 'Learner_' + cleanCode.slice(-3);
+
+      const room = await QuizRoom.findOne({ roomCode: cleanCode });
+      if (!room) {
+        return res.status(404).json({ success: false, message: `Room ${cleanCode} does not exist.` });
+      }
+
+      if (room.status === 'finished') {
+        return res.status(400).json({ success: false, message: 'This live quiz has already concluded.' });
+      }
+
+      const existing = (room.participants || []).find(p => p.userId === userId);
+      if (!existing) {
+        room.participants.push({
+          userId,
+          name: userName,
+          score: 0,
+          correct: 0,
+          answered: 0,
+          joinedAt: new Date().toISOString(),
+          connected: true
+        });
+        await QuizRoom.updateOne({ roomCode: cleanCode }, { participants: room.participants });
+      }
+
+      return res.json({ success: true, roomCode: cleanCode, room });
+    } catch (error) {
+      console.error('[QuizController] joinLiveRoom error:', error);
       res.status(500).json({ success: false, message: error.message });
     }
   }
@@ -191,22 +456,11 @@ class QuizController {
   async getRoom(req, res) {
     try {
       const { roomCode } = req.params;
-      const cleanCode = roomCode.toUpperCase();
-
-      const room = {
-        roomCode: cleanCode,
-        topic: 'Live STEM Arena',
-        difficulty: 'Medium',
-        status: 'waiting',
-        questionCount: 5,
-        currentQuestionIndex: 0,
-        participants: [
-          { id: 'p_1', name: 'Alex Runner', score: 240, ready: true },
-          { id: 'p_2', name: 'Sophia AI', score: 190, ready: true },
-          { id: 'p_3', name: 'You', score: 0, ready: true }
-        ]
-      };
-
+      const cleanCode = (roomCode || '').toUpperCase().trim();
+      const room = await QuizRoom.findOne({ roomCode: cleanCode });
+      if (!room) {
+        return res.status(404).json({ success: false, message: 'Room not found' });
+      }
       return res.json({ success: true, room });
     } catch (error) {
       console.error('[QuizController] getRoom error:', error);

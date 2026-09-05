@@ -7,6 +7,7 @@ class MemoryCollection {
   }
 
   _clone(doc) {
+    if (!doc) return null;
     return JSON.parse(JSON.stringify(doc));
   }
 
@@ -20,7 +21,7 @@ class MemoryCollection {
   }
 
   async findById(id) {
-    const item = this.items.find(item => item._id === id || item.id === id);
+    const item = this.items.find(item => (item._id && item._id.toString() === id.toString()) || (item.id && item.id.toString() === id.toString()));
     return item ? this._clone(item) : null;
   }
 
@@ -44,7 +45,7 @@ class MemoryCollection {
   }
 
   async findByIdAndUpdate(id, update, options = { new: true }) {
-    const idx = this.items.findIndex(item => item._id === id || item.id === id);
+    const idx = this.items.findIndex(item => (item._id && item._id.toString() === id.toString()) || (item.id && item.id.toString() === id.toString()));
     if (idx === -1) return null;
     const current = this.items[idx];
     const patch = update.$set ? update.$set : update;
@@ -73,10 +74,10 @@ class MemoryCollection {
   }
 
   async findByIdAndDelete(id) {
-    const idx = this.items.findIndex(item => item._id === id || item.id === id);
+    const idx = this.items.findIndex(item => (item._id && item._id.toString() === id.toString()) || (item.id && item.id.toString() === id.toString()));
     if (idx === -1) return null;
     const [deleted] = this.items.splice(idx, 1);
-    return deleted;
+    return this._clone(deleted);
   }
 
   async countDocuments(query = {}) {
@@ -85,8 +86,13 @@ class MemoryCollection {
 
   _matches(item, query) {
     for (const key of Object.keys(query)) {
-      if (key === '_id' && item._id !== query._id && item.id !== query._id) return false;
-      if (item[key] !== query[key]) return false;
+      if (key === '_id') {
+        const queryId = query._id ? query._id.toString() : '';
+        const itemId = item._id ? item._id.toString() : (item.id ? item.id.toString() : '');
+        if (itemId !== queryId) return false;
+      } else if (item[key] !== query[key]) {
+        return false;
+      }
     }
     return true;
   }
@@ -109,16 +115,23 @@ let isMongoConnected = false;
 
 const connectDB = async () => {
   const mongoUri = process.env.MONGO_URI;
+  const isDemoMode = process.env.DEMO_MODE === 'true';
+
   if (!mongoUri) {
-    console.log('[Database] Running in zero-config memory storage mode.');
+    if (!isDemoMode) {
+      console.log('[Database] Notice: MONGO_URI is not set. Operating in zero-config in-memory database mode for development.');
+    } else {
+      console.log('[Database] DEMO_MODE active: Using zero-config in-memory data store.');
+    }
     return;
   }
+
   try {
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2000 });
+    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 3000 });
     isMongoConnected = true;
-    console.log('[Database] MongoDB Connected.');
+    console.log('[Database] ✅ MongoDB Successfully Connected to ' + mongoUri.split('@').pop());
   } catch (err) {
-    console.warn('[Database] MongoDB connection failed (' + err.message + '). Operating in memory mode.');
+    console.warn(`[Database] ⚠️ MongoDB connection failed (${err.message}). Falling back to in-memory store.`);
   }
 };
 
