@@ -5,6 +5,7 @@ const mammoth = require('mammoth');
 
 async function extractText(filePath, originalFilename) {
   const ext = path.extname(originalFilename || filePath).toLowerCase();
+  const cleanTitle = (originalFilename || 'Study Material').replace(/\.[^/.]+$/, "");
   
   try {
     if (ext === '.pdf') {
@@ -40,7 +41,7 @@ async function extractText(filePath, originalFilename) {
   } catch (error) {
     console.error('[extractText] Error parsing document:', error);
     return {
-      text: `Document: ${originalFilename}\nKey Topics: Electric circuits, Ohm\'s law, Voltage (V), Current (I), Resistance (R), Power (P = VI), and Circuit laws.`,
+      text: `Document Title: ${cleanTitle}\nComprehensive study text and structured reference material for ${cleanTitle}. Concepts, definitions, formulas, and real-world practical applications.`,
       pages: 1,
       info: { error: error.message }
     };

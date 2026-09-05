@@ -1,7 +1,8 @@
 const { memoryStore, getIsMongoConnected } = require('../utils/db');
 
 function getModel(name) {
-  const mem = memoryStore.collection(name.toLowerCase() + 's');
+  const collectionName = name.toLowerCase() + 's';
+  const mem = memoryStore.collection(collectionName);
   return {
     find: (q) => mem.find(q),
     findOne: (q) => mem.findOne(q),
@@ -27,7 +28,15 @@ module.exports = {
   Question: getModel('Question'),
   Assessment: getModel('Assessment'),
   LearningProgress: getModel('LearningProgress'),
+  ConceptMastery: getModel('ConceptMastery'),
   Misconception: getModel('Misconception'),
   LearningPath: getModel('LearningPath'),
-  Note: getModel('Note')
+  Note: getModel('Note'),
+  StudyPlan: getModel('StudyPlan'),
+  VideoLearning: getModel('VideoLearning'),
+  Quiz: getModel('Quiz'),
+  QuizAttempt: getModel('QuizAttempt'),
+  QuizRoom: getModel('QuizRoom'),
+  QuizParticipant: getModel('QuizParticipant'),
+  Conversation: getModel('Conversation')
 };

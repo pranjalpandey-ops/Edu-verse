@@ -27,9 +27,12 @@ import {
   Clock,
   UploadCloud,
   HelpCircle,
-  Smile
+  Smile,
+  Sun,
+  Moon
 } from 'lucide-react';
 import EarthCanvas from '../components/EarthCanvas';
+import { useTheme } from '../context/ThemeContext';
 
 const STUDENT_BENEFITS = [
   { name: "TALK NATURALLY", tag: "Speak & listen freely" },
@@ -106,56 +109,121 @@ const CURRICULUM_TRACKS = [
   }
 ];
 
+const LANDING_GRADES_DATA = {
+  'class-9': {
+    title: 'Class 9th Foundation',
+    tag: 'Motion, Matter & Polynomials',
+    subjects: [
+      { name: 'Physics: Motion & Gravitation', formula: 'v = u + at | F = G*(m1*m2)/r²', desc: 'Laws of motion, work, energy and universal gravitation.' },
+      { name: 'Chemistry: Matter & Atoms', formula: 'Mole = Mass / Molar Mass | 6.022×10²³', desc: 'Atomic structure, chemical formulas and states of matter.' },
+      { name: 'Mathematics: Polynomials & Geometry', formula: '(a+b)² = a² + 2ab + b² | Area = ½*b*h', desc: 'Euclidean geometry, linear equations and factorization.' },
+      { name: 'Biology: Cell & Tissues', formula: 'ATP Energy Cycle & Cell Organelles', desc: 'Fundamental unit of life, plant/animal tissues and diversity.' }
+    ]
+  },
+  'class-10': {
+    title: 'Class 10th Board Mastery',
+    tag: 'Electricity, Optics, Reactions & Trig',
+    subjects: [
+      { name: 'Physics: Light & Electricity', formula: '1/f = 1/v + 1/u | V = I*R | P = V*I', desc: 'Mirror & lens equations, Ohm’s law and electromagnetic effects.' },
+      { name: 'Chemistry: Chemical Reactions & Acids', formula: 'pH = -log[H⁺] | Redox Balancing', desc: 'Reactions, salts, metals/non-metals and carbon compounds.' },
+      { name: 'Mathematics: Trigonometry & Quadratic', formula: 'sin²θ + cos²θ = 1 | x = (-b±√(b²-4ac))/(2a)', desc: 'Identities, heights & distances, AP series and circles.' },
+      { name: 'Biology: Life Processes & Heredity', formula: 'Photosynthesis: 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂', desc: 'Nutrition, respiration, circulation, nervous system and genetics.' }
+    ]
+  },
+  'class-11': {
+    title: 'Class 11th Advanced Prep',
+    tag: 'Mechanics, Thermodynamics & Calculus',
+    subjects: [
+      { name: 'Physics: Kinematics & Mechanics', formula: 'F = dp/dt | L = Iω | W = ∫F·dx', desc: 'Rotational dynamics, gravitation, SHM and wave motion.' },
+      { name: 'Chemistry: Structure & Thermodynamics', formula: 'ΔG = ΔH - TΔS | PV = nRT', desc: 'Chemical bonding, hybridization, equilibrium and organic chemistry.' },
+      { name: 'Mathematics: Coordinate & Calculus', formula: 'd/dx(xⁿ) = n·xⁿ⁻¹ | lim(x→0)(sin x / x) = 1', desc: 'Limits, derivatives, conic sections, permutations and binomial theorem.' },
+      { name: 'Biology: Biomolecules & Physiology', formula: 'Enzyme Kinetics & Cellular Respiration (Krebs Cycle)', desc: 'Cell cycle, plant physiology and human body systems.' }
+    ]
+  },
+  'class-12': {
+    title: 'Class 12th Board & Competitive (JEE/NEET)',
+    tag: 'Electromagnetism, Integrals & Genetics',
+    subjects: [
+      { name: 'Physics: Electrodynamics & Optics', formula: 'F = k*q1*q2/r² | 1/f = (n-1)(1/R1 - 1/R2) | dB = (μ₀/4π)(I dl sinθ)/r²', desc: 'Coulomb’s law, Biot-Savart, electromagnetic induction and wave optics.' },
+      { name: 'Chemistry: Kinetics & Coordination', formula: 'k = A·e^(-Ea/RT) | E = E° - (0.0591/n)log(Q)', desc: 'Electrochemistry, Nernst equation, rate laws and organic reaction mechanisms.' },
+      { name: 'Mathematics: Integrals, Vectors & 3D', formula: '∫u v dx = u∫v dx - ∫(u\' ∫v dx)dx | |(a2-a1)·(b1×b2)|/|b1×b2|', desc: 'Definite integrals, 3D geometry, matrices and differential equations.' },
+      { name: 'Biology: Genetics & Biotechnology', formula: 'Central Dogma: DNA → mRNA → Protein (Polymerase Chain Reaction)', desc: 'Molecular basis of inheritance, DNA replication, recombinant DNA and ecology.' }
+    ]
+  }
+};
+
+const LANDING_EXAM_PREVIEW = [
+  { name: 'CBSE Class 12 Physics Pre-Board', days: 10, date: 'Sept 15', badge: 'Board Exam' },
+  { name: 'Class 12 Math Term Assessment', days: 17, date: 'Sept 22', badge: 'Term Test' },
+  { name: 'JEE / NEET All-India Mock Test 3', days: 23, date: 'Sept 28', badge: 'National Mock' }
+];
+
 const Landing = () => {
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
   const [activeTrackCategory, setActiveTrackCategory] = useState('all');
+  const [selectedLandingGrade, setSelectedLandingGrade] = useState('class-12');
 
   const filteredTracks = activeTrackCategory === 'all' 
     ? CURRICULUM_TRACKS 
     : CURRICULUM_TRACKS.filter(t => t.category === activeTrackCategory);
 
   return (
-    <div className="min-h-screen bg-[#030611] text-slate-100 flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden relative">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#030611] text-slate-800 dark:text-slate-100 flex flex-col justify-between selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden relative transition-colors duration-200">
       
-      {/* 1. Deep Space Atmospheric Ambient Glows (Electric Blue & Azure) */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-blue-600/15 via-cyan-500/10 to-transparent blur-[140px] pointer-events-none -z-10" />
-      <div className="fixed top-1/3 -right-32 w-[600px] h-[600px] bg-gradient-to-bl from-blue-500/15 via-indigo-600/10 to-transparent blur-[160px] pointer-events-none -z-10" />
-      <div className="fixed bottom-10 -left-20 w-[500px] h-[500px] bg-blue-950/25 blur-[130px] pointer-events-none -z-10" />
+      {/* 1. Deep Space / Atmospheric Ambient Glows */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-blue-600/10 dark:from-blue-600/15 via-cyan-500/5 dark:via-cyan-500/10 to-transparent blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed top-1/3 -right-32 w-[600px] h-[600px] bg-gradient-to-bl from-blue-500/10 dark:from-blue-500/15 via-indigo-600/5 dark:via-indigo-600/10 to-transparent blur-[160px] pointer-events-none -z-10" />
+      <div className="fixed bottom-10 -left-20 w-[500px] h-[500px] bg-blue-950/15 dark:bg-blue-950/25 blur-[130px] pointer-events-none -z-10" />
       
       {/* Space Perspective Grid Overlay */}
-      <div className="fixed inset-0 perspective-grid opacity-30 pointer-events-none -z-10" />
+      <div className="fixed inset-0 perspective-grid opacity-20 dark:opacity-30 pointer-events-none -z-10" />
 
       {/* 2. Top Minimalist Floating Navbar */}
-      <header className="px-6 md:px-12 py-4 flex items-center justify-between border-b border-white/[0.06] sticky top-0 bg-[#030611]/80 backdrop-blur-xl z-50 transition-all">
+      <header className="px-6 md:px-12 py-4 flex items-center justify-between border-b border-slate-200/80 dark:border-white/[0.06] sticky top-0 bg-white/80 dark:bg-[#030611]/80 backdrop-blur-xl z-50 transition-colors">
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-400 p-[1.5px] shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all">
-            <div className="w-full h-full bg-[#030714] rounded-[10px] flex items-center justify-center">
-              <Globe2 className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <div className="w-full h-full bg-white dark:bg-[#030714] rounded-[10px] flex items-center justify-center">
+              <Globe2 className="w-4 h-4 text-blue-600 dark:text-cyan-400 animate-pulse" />
             </div>
           </div>
           <div>
-            <span className="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
-              EduVerse <span className="text-cyan-400 font-mono text-xs px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">AI TUTOR</span>
+            <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+              EduVerse <span className="text-blue-600 dark:text-cyan-400 font-mono text-xs px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">AI TUTOR</span>
             </span>
           </div>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-8 text-xs font-mono tracking-wider uppercase text-slate-400">
-          <a href="#how-it-works" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-            <span className="text-[9px] text-blue-400">01</span> How It Works
+        <nav className="hidden lg:flex items-center gap-8 text-xs font-mono tracking-wider uppercase text-slate-500 dark:text-slate-400">
+          <a href="#how-it-works" className="hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+            <span className="text-[9px] text-blue-500 dark:text-blue-400">01</span> How It Works
           </a>
-          <a href="#study-steps" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-            <span className="text-[9px] text-blue-400">02</span> Study Journey
+          <a href="#study-steps" className="hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+            <span className="text-[9px] text-blue-500 dark:text-blue-400">02</span> Study Journey
           </a>
-          <a href="#subjects" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-            <span className="text-[9px] text-blue-400">03</span> Subjects
+          <a href="#subjects" className="hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+            <span className="text-[9px] text-blue-500 dark:text-blue-400">03</span> Subjects
           </a>
-          <a href="#why-us" className="hover:text-cyan-400 transition-colors flex items-center gap-1.5">
-            <span className="text-[9px] text-blue-400">04</span> Why EduVerse
+          <a href="#why-us" className="hover:text-blue-600 dark:hover:text-cyan-400 transition-colors flex items-center gap-1.5">
+            <span className="text-[9px] text-blue-500 dark:text-blue-400">04</span> Why EduVerse
           </a>
         </nav>
 
         <div className="flex items-center gap-3.5">
+          {/* Theme Toggle Button */}
+          <button 
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors flex items-center justify-center border border-white/10"
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle Theme"
+          >
+            {isDark ? (
+              <Sun className="w-4 h-4 text-amber-400 hover:rotate-45 transition-transform" />
+            ) : (
+              <Moon className="w-4 h-4 text-cyan-300 hover:-rotate-12 transition-transform" />
+            )}
+          </button>
+
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono text-cyan-400">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
             <span>AI TUTOR READY</span>
@@ -445,6 +513,131 @@ const Landing = () => {
           })}
         </div>
 
+      </section>
+
+      {/* 7.5 CLASS 9TH - 12TH CURRICULUM & EXAM SCHEDULE MASTERCLASS */}
+      <section id="curriculum-exams" className="py-24 px-6 md:px-12 bg-gradient-to-b from-[#02050f] via-[#040c20] to-[#02050f] border-t border-b border-white/[0.06]">
+        <div className="max-w-7xl mx-auto space-y-12">
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-3 max-w-2xl">
+              <span className="text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold">
+                04 // CLASS 9TH - 12TH CURRICULUM & EXAM RADAR
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                Important Formulas, Key Derivations & Timetable Sync
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400">
+                Tailored for CBSE, ICSE, State Boards and Competitive Prep (JEE / NEET).
+              </p>
+            </div>
+
+            {/* Grade Switcher */}
+            <div className="flex flex-wrap gap-2 p-1.5 rounded-2xl bg-black/60 border border-white/[0.08] backdrop-blur-md">
+              {[
+                { id: 'class-9', label: 'Class 9th' },
+                { id: 'class-10', label: 'Class 10th' },
+                { id: 'class-11', label: 'Class 11th' },
+                { id: 'class-12', label: 'Class 12th' }
+              ].map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setSelectedLandingGrade(g.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold font-mono transition-all cursor-pointer ${
+                    selectedLandingGrade === g.id
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+                  }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Curriculum Preview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {LANDING_GRADES_DATA[selectedLandingGrade]?.subjects.map((subj, idx) => (
+              <div 
+                key={idx}
+                className="p-6 rounded-3xl bg-[#060b18] border border-white/[0.06] hover:border-cyan-500/30 transition-all space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-white text-base">
+                      {subj.name}
+                    </h3>
+                    <span className="text-[10px] font-mono text-cyan-400 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20">
+                      High Yield
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/50 border border-cyan-500/20 font-mono text-xs text-cyan-300 font-bold overflow-x-auto">
+                    {subj.formula}
+                  </div>
+
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {subj.desc}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                  <button
+                    onClick={() => navigate('/revision')}
+                    className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View All Formulas</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => navigate(`/search?q=${encodeURIComponent(subj.name)}`)}
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-cyan-300 hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>AI Lesson</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Exam Schedule Radar Bar */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-950/40 via-[#060e24] to-cyan-950/40 border border-blue-500/20 flex flex-col lg:flex-row items-center justify-between gap-6">
+            <div className="space-y-1">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+                LIVE EXAM RADAR
+              </span>
+              <h3 className="text-lg font-bold text-white">
+                Upcoming Board & Competitive Test Schedule
+              </h3>
+              <p className="text-xs text-slate-400">
+                Auto-sync your timetable and track syllabus completion in real time.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {LANDING_EXAM_PREVIEW.map((ex, eIdx) => (
+                <div key={eIdx} className="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/[0.08] text-center space-y-0.5">
+                  <span className="text-xs font-bold text-white block">{ex.name}</span>
+                  <div className="flex items-center justify-center gap-2 text-[11px] text-slate-400 font-mono">
+                    <span>{ex.date}</span>
+                    <span>•</span>
+                    <span className="text-amber-400 font-bold">{ex.days} Days Left</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => navigate('/study-plan')}
+              className="px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-blue-500/30 cursor-pointer shrink-0"
+            >
+              <span>Upload Timetable</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+        </div>
       </section>
 
       {/* 8. WHY STUDENTS LOVE EDUVERSE AI */}

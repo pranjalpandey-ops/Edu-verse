@@ -10,6 +10,16 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
+import SearchLearn from './pages/SearchLearn';
+import Topics from './pages/Topics';
+import YouTubeLearning from './pages/YouTubeLearning';
+import VideoLearning from './pages/VideoLearning';
+import Quiz from './pages/Quiz';
+import CreateQuiz from './pages/CreateQuiz';
+import JoinQuiz from './pages/JoinQuiz';
+import LiveQuiz from './pages/LiveQuiz';
+import StudyPlan from './pages/StudyPlan';
+import Progress from './pages/Progress';
 import CreateLesson from './pages/CreateLesson';
 import Materials from './pages/Materials';
 import LessonPlan from './pages/LessonPlan';
@@ -44,10 +54,22 @@ function App() {
             {/* Authenticated Application Layout */}
             <Route element={<MainLayout onLanguageChange={handleLanguageChange} currentLanguage={currentLanguage} />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/search" element={<SearchLearn />} />
+              <Route path="/topics" element={<Topics />} />
+              <Route path="/youtube" element={<YouTubeLearning />} />
+              <Route path="/youtube/:videoId" element={<VideoLearning />} />
+              <Route path="/quiz" element={<Quiz />} />
+              <Route path="/create-quiz" element={<CreateQuiz />} />
+              <Route path="/join-quiz" element={<JoinQuiz />} />
+              <Route path="/live-quiz/:roomCode" element={<LiveQuiz />} />
+              <Route path="/study-plan" element={<StudyPlan />} />
+              <Route path="/progress" element={<Progress />} />
               <Route path="/create-lesson" element={<CreateLesson />} />
               <Route path="/materials" element={<Materials />} />
               <Route path="/lesson-plan" element={<LessonPlan />} />
+              <Route path="/lesson/:id" element={<LessonPlan />} />
               <Route path="/teacher" element={<TeacherClassroom />} />
+              <Route path="/classroom/:lessonId" element={<TeacherClassroom />} />
               <Route path="/assessment" element={<Assessment />} />
               <Route path="/report" element={<LearningReport />} />
               <Route path="/learning-path" element={<LearningPath />} />
